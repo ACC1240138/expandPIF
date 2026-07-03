@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_0p989i7" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.13.2">
+  <bpmn:process id="Process_1wp4nrm" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1wb05iy">
+      <bpmn:outgoing>Flow_1r5n7rz</bpmn:outgoing>
+      <bpmn:outgoing>Flow_13czh3m</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1vpe8kd</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Activity_0ec8ytt" name="Potentially avoidable mortality injury Chile">
+      <bpmn:incoming>Flow_1r5n7rz</bpmn:incoming>
+      <bpmn:outgoing>Flow_1ybgfdq</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0zht1ox</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1piqpln</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1r5n7rz" sourceRef="StartEvent_1wb05iy" targetRef="Activity_0ec8ytt" />
+    <bpmn:task id="Activity_1a6g06o" name="Sex age and alcohol differences in attributable mortality Chile">
+      <bpmn:incoming>Flow_13czh3m</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_13czh3m" sourceRef="StartEvent_1wb05iy" targetRef="Activity_1a6g06o" />
+    <bpmn:task id="Activity_0kx0npe" name="Privados">
+      <bpmn:incoming>Flow_1vpe8kd</bpmn:incoming>
+      <bpmn:outgoing>Flow_14pjq3q</bpmn:outgoing>
+      <bpmn:outgoing>Flow_10zg4tb</bpmn:outgoing>
+      <bpmn:outgoing>Flow_1ba5e3e</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1vpe8kd" sourceRef="StartEvent_1wb05iy" targetRef="Activity_0kx0npe" />
+    <bpmn:task id="Activity_05xvqx4" name="Elasticidad">
+      <bpmn:incoming>Flow_14pjq3q</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_14pjq3q" sourceRef="Activity_0kx0npe" targetRef="Activity_05xvqx4" />
+    <bpmn:task id="Activity_10smiee" name="Mortalidad">
+      <bpmn:incoming>Flow_10zg4tb</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_10zg4tb" sourceRef="Activity_0kx0npe" targetRef="Activity_10smiee" />
+    <bpmn:task id="Activity_1tnnn0a" name="Simulación">
+      <bpmn:incoming>Flow_1ba5e3e</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1ba5e3e" sourceRef="Activity_0kx0npe" targetRef="Activity_1tnnn0a" />
+    <bpmn:task id="Activity_0tz4rwg" name="PIF">
+      <bpmn:incoming>Flow_1ybgfdq</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1ybgfdq" sourceRef="Activity_0ec8ytt" targetRef="Activity_0tz4rwg" />
+    <bpmn:task id="Activity_0fr9hhr" name="PAF">
+      <bpmn:incoming>Flow_0zht1ox</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_0zht1ox" sourceRef="Activity_0ec8ytt" targetRef="Activity_0fr9hhr" />
+    <bpmn:task id="Activity_12cf759" name="Alcohol use">
+      <bpmn:incoming>Flow_1piqpln</bpmn:incoming>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1piqpln" sourceRef="Activity_0ec8ytt" targetRef="Activity_12cf759" />
+    <bpmn:textAnnotation id="TextAnnotation_1e20aef">
+      <bpmn:text>.RData
+.Rhistory
+ENPG_FULL
+ine_proyecciones
+mortality_injuries
+PAF INJURIES
+PAF INJURIES_SENS
+PIF injuries
+PIF-BINGE
+README.md</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1r5p6k0" associationDirection="None" sourceRef="Activity_0ec8ytt" targetRef="TextAnnotation_1e20aef" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1wp4nrm">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1wb05iy">
+        <dc:Bounds x="152" y="452" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1a6g06o_di" bpmnElement="Activity_1a6g06o">
+        <dc:Bounds x="280" y="430" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ec8ytt_di" bpmnElement="Activity_0ec8ytt">
+        <dc:Bounds x="280" y="175" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0kx0npe_di" bpmnElement="Activity_0kx0npe">
+        <dc:Bounds x="280" y="688" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0tz4rwg_di" bpmnElement="Activity_0tz4rwg">
+        <dc:Bounds x="480" y="175" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0fr9hhr_di" bpmnElement="Activity_0fr9hhr">
+        <dc:Bounds x="480" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_12cf759_di" bpmnElement="Activity_12cf759">
+        <dc:Bounds x="480" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_05xvqx4_di" bpmnElement="Activity_05xvqx4">
+        <dc:Bounds x="480" y="688" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_10smiee_di" bpmnElement="Activity_10smiee">
+        <dc:Bounds x="480" y="788" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1tnnn0a_di" bpmnElement="Activity_1tnnn0a">
+        <dc:Bounds x="480" y="888" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_1r5p6k0_di" bpmnElement="Association_1r5p6k0">
+        <di:waypoint x="280" y="224" />
+        <di:waypoint x="251" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1r5n7rz_di" bpmnElement="Flow_1r5n7rz">
+        <di:waypoint x="170" y="452" />
+        <di:waypoint x="170" y="215" />
+        <di:waypoint x="280" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_13czh3m_di" bpmnElement="Flow_13czh3m">
+        <di:waypoint x="188" y="470" />
+        <di:waypoint x="280" y="470" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vpe8kd_di" bpmnElement="Flow_1vpe8kd">
+        <di:waypoint x="170" y="488" />
+        <di:waypoint x="170" y="728" />
+        <di:waypoint x="280" y="728" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ybgfdq_di" bpmnElement="Flow_1ybgfdq">
+        <di:waypoint x="380" y="215" />
+        <di:waypoint x="480" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0zht1ox_di" bpmnElement="Flow_0zht1ox">
+        <di:waypoint x="350" y="255" />
+        <di:waypoint x="350" y="310" />
+        <di:waypoint x="480" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1piqpln_di" bpmnElement="Flow_1piqpln">
+        <di:waypoint x="350" y="175" />
+        <di:waypoint x="350" y="120" />
+        <di:waypoint x="480" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_14pjq3q_di" bpmnElement="Flow_14pjq3q">
+        <di:waypoint x="380" y="728" />
+        <di:waypoint x="480" y="728" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10zg4tb_di" bpmnElement="Flow_10zg4tb">
+        <di:waypoint x="350" y="768" />
+        <di:waypoint x="350" y="828" />
+        <di:waypoint x="480" y="828" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ba5e3e_di" bpmnElement="Flow_1ba5e3e">
+        <di:waypoint x="330" y="768" />
+        <di:waypoint x="330" y="928" />
+        <di:waypoint x="480" y="928" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1e20aef_di" bpmnElement="TextAnnotation_1e20aef">
+        <dc:Bounds x="184" y="250" width="146" height="169" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
