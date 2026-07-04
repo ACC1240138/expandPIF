@@ -1,0 +1,630 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_expand_pif_pipeline" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.16.0">
+  <bpmn:collaboration id="Collaboration_expand_pif">
+    <bpmn:participant id="Participant_expand_pif" name="expand_pif.ipynb - flujo documental y computacional" processRef="Process_expand_pif" />
+    <bpmn:textAnnotation id="Annotation_enpg">
+      <bpmn:text>Deriva consumo g/dia calibrado, cvolaj/cvolajms, abstemio, ex-bebedor fd, HED/binge, sexo y edad_tramo 1-4. Escribe cache de sensibilidad binge.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_scope">
+      <bpmn:text>Notebook Quarto/Jupyter con execute-dir: project. Limpia la sesion, carga paquetes y produce salida HTML. El motor contiene PIF, pero en este flujo observado el cuaderno usa principalmente la ruta AAF para mortalidad atribuible.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_design">
+      <bpmn:text>revision_diseno_enpg_extension.R cruza ENPG_BINGE con lookup minimo 2022/2024, calcula neff Kish, factores PSU por abs/form/hed/consumo y entrega kish para aaf_unified.R.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_registry">
+      <bpmn:text>load_adam_rr_registry(scope): cancer/hhd/general usan GENERAL_chronic_RR_2024_08_23.R; ihd usa GENERAL_ihd_RR_2018_03_16.R; is usa GENERAL_IS_RR_2018_03_16.R; injuries usa GENERAL_injuries_RR_2018_03_16.R. Valida campos RRCurrent, beta, covarianzas, former drinker y binge cuando aplica.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_compute">
+      <bpmn:text>aaf_unified.R integra RR sobre distribuciones gamma. No-HED: cancer, HHD, general.
+HED cap: IHD e ischaemic stroke con RR&gt;=1 en binge.
+HED explicito: injuries con beta binge.
+Monte Carlo usa n_sim, n_pca, seed, neff, design_factor y fd_uncertainty.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_validation">
+      <bpmn:text>Validaciones: preflight de listas gamma/prevalencias/grillas;
+registry metadata;
+AAF finita, CI ordenado y AAF&lt;=1;
+aaf_error_log;
+chequeo de llaves antes de unir con mortalidad.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="Annotation_outputs">
+      <bpmn:text>Productos principales:
+ - data_binge_sensitivity.rds,
+ - mortality_dataV2.rds,
+ - aaf_engine_inputs_bundle,
+ - aaf_nested_by_disease,
+ - tabla AAF WHO 2024,
+ - Mortality Estimates WHO 2024.xlsx,
+ - figuras PNG,
+ - tablas de burden/rates,
+ - comparaciones JRT</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_enpg_note" sourceRef="Task_enpg" targetRef="Annotation_enpg" />
+    <bpmn:association id="Assoc_compute_note" sourceRef="Task_compute_aaf" targetRef="Annotation_compute" />
+    <bpmn:association id="Assoc_registry_note" sourceRef="Task_load_registry" targetRef="Annotation_registry" />
+    <bpmn:association id="Assoc_validation_note" sourceRef="Task_save_aaf" targetRef="Annotation_validation" />
+    <bpmn:association id="Assoc_outputs_note" sourceRef="Task_figures_tables" targetRef="Annotation_outputs" />
+    <bpmn:association id="Assoc_scope" sourceRef="Task_setup" targetRef="Annotation_scope" />
+    <bpmn:association id="Assoc_design_note" sourceRef="Task_design" targetRef="Annotation_design" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_expand_pif" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_expand_pif">
+      <bpmn:lane id="Lane_outputs" name="Productos, validaciones y comparaciones">
+        <bpmn:flowNodeRef>Task_wide_aaf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_export_aaf_table</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_join_mortality</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_jrt_compare</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_figures_tables</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_rr_engine" name="RR Adam/WHO y motor AAF/PIF">
+        <bpmn:flowNodeRef>Task_source_engine</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_load_registry</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_compute_aaf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_save_aaf</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_mortality" name="Mortalidad, causas y poblacion">
+        <bpmn:flowNodeRef>Task_mortality</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_icd_flags</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_population</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_exposure" name="Exposicion ENPG y diseno">
+        <bpmn:flowNodeRef>Task_aaf_inputs</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_enpg</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_design</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_orchestration" name="Orquestacion notebook">
+        <bpmn:flowNodeRef>Start_expand_pif</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_setup</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_session_html</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_artifacts</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_expand_pif" name="Abrir / ejecutar notebook">
+      <bpmn:outgoing>Flow_start_setup</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_setup" name="Setup R y paquetes">
+      <bpmn:incoming>Flow_start_setup</bpmn:incoming>
+      <bpmn:outgoing>Flow_setup_enpg</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_mortality" name="Importar y consolidar DEIS 2012-2024">
+      <bpmn:incoming>Flow_design_mortality</bpmn:incoming>
+      <bpmn:outgoing>Flow_mortality_icd</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_icd_flags" name="Etiquetar causas ICD-10 y AAF=1">
+      <bpmn:incoming>Flow_mortality_icd</bpmn:incoming>
+      <bpmn:outgoing>Flow_icd_inputs</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_aaf_inputs" name="Construir inputs AAF y auditoria previa">
+      <bpmn:incoming>Flow_icd_inputs</bpmn:incoming>
+      <bpmn:outgoing>Flow_inputs_source</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_wide_aaf" name="Armar AAF wide por sexo">
+      <bpmn:incoming>Flow_save_wide</bpmn:incoming>
+      <bpmn:outgoing>Flow_wide_export_table</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_export_aaf_table" name="Exportar tabla AAF WHO 2024">
+      <bpmn:incoming>Flow_wide_export_table</bpmn:incoming>
+      <bpmn:outgoing>Flow_export_join</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_join_mortality" name="Unir AAF con muertes y exportar Excel">
+      <bpmn:incoming>Flow_export_join</bpmn:incoming>
+      <bpmn:outgoing>Flow_join_population</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_jrt_compare" name="Comparar cancer con JRT">
+      <bpmn:incoming>Flow_population_jrt</bpmn:incoming>
+      <bpmn:outgoing>Flow_jrt_figures</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_figures_tables" name="Generar figuras, tablas y resultados">
+      <bpmn:incoming>Flow_jrt_figures</bpmn:incoming>
+      <bpmn:outgoing>Flow_figures_session</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:dataObjectReference id="DataRef_data_binge" name="PIF addiction/data_binge_sensitivity.rds" dataObjectRef="DataObject_data_binge" />
+    <bpmn:dataObject id="DataObject_data_binge" />
+    <bpmn:dataObjectReference id="DataRef_deis" name="DEIS parquet/CSV 2012-2024" dataObjectRef="DataObject_deis" />
+    <bpmn:dataObject id="DataObject_deis" />
+    <bpmn:dataObjectReference id="DataRef_mort_cache" name="udpate jun 26/mortality_dataV2.rds" dataObjectRef="DataObject_mort_cache" />
+    <bpmn:dataObject id="DataObject_mort_cache" />
+    <bpmn:dataObjectReference id="DataRef_aaf_table" name="tabla_aaf_who2024_sexo_causa_ano.csv/md" dataObjectRef="DataObject_aaf_table" />
+    <bpmn:dataObject id="DataObject_aaf_table" />
+    <bpmn:dataObjectReference id="DataRef_mort_excel" name="Mortality Estimates WHO 2024.xlsx" dataObjectRef="DataObject_mort_excel" />
+    <bpmn:dataObject id="DataObject_mort_excel" />
+    <bpmn:dataObjectReference id="DataRef_input_bundle" name="aaf_engine_inputs_bundle_YYYYMMDD.rds" dataObjectRef="DataObject_input_bundle" />
+    <bpmn:dataObject id="DataObject_input_bundle" />
+    <bpmn:task id="Task_enpg" name="Consolidar ENPG alcohol y HED">
+      <bpmn:incoming>Flow_setup_enpg</bpmn:incoming>
+      <bpmn:outgoing>Flow_enpg_design</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_design" name="Corregir precision por diseno ENPG">
+      <bpmn:incoming>Flow_enpg_design</bpmn:incoming>
+      <bpmn:outgoing>Flow_design_mortality</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:dataObjectReference id="DataRef_enpg" name="ACC.../ENPG_BINGE.RDS" dataObjectRef="DataObject_enpg" />
+    <bpmn:dataObject id="DataObject_enpg" />
+    <bpmn:task id="Task_population" name="Preparar poblacion y tasas estandarizadas">
+      <bpmn:incoming>Flow_join_population</bpmn:incoming>
+      <bpmn:outgoing>Flow_population_jrt</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:dataObjectReference id="DataRef_ine" name="INE base 2024 / ine_proyecciones_2012_2024.xlsx" dataObjectRef="DataObject_ine" />
+    <bpmn:dataObject id="DataObject_ine" />
+    <bpmn:task id="Task_source_engine" name="Source rr_registry_adam.R y aaf_unified.R">
+      <bpmn:incoming>Flow_inputs_source</bpmn:incoming>
+      <bpmn:outgoing>Flow_source_registry</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_load_registry" name="Cargar registry_adam por 6 scopes">
+      <bpmn:incoming>Flow_source_registry</bpmn:incoming>
+      <bpmn:outgoing>Flow_registry_compute</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_compute_aaf" name="Calcular AAF por familias de causa">
+      <bpmn:incoming>Flow_registry_compute</bpmn:incoming>
+      <bpmn:outgoing>Flow_compute_save</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_save_aaf" name="Validar tablas AAF y guardar bundle">
+      <bpmn:incoming>Flow_compute_save</bpmn:incoming>
+      <bpmn:outgoing>Flow_save_wide</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:dataObjectReference id="DataRef_engine" name="aaf_unified.R" dataObjectRef="DataObject_engine" />
+    <bpmn:dataObject id="DataObject_engine" />
+    <bpmn:dataObjectReference id="DataRef_registry" name="rr_registry_adam.R" dataObjectRef="DataObject_registry" />
+    <bpmn:dataObject id="DataObject_registry" />
+    <bpmn:dataObjectReference id="DataRef_rr_files" name="GENERAL_*_RR_*.R" dataObjectRef="DataObject_rr_files" />
+    <bpmn:dataObject id="DataObject_rr_files" />
+    <bpmn:dataObjectReference id="DataRef_aaf_nested" name="aaf_nested_by_disease_YYYYMMDD.rds" dataObjectRef="DataObject_aaf_nested" />
+    <bpmn:dataObject id="DataObject_aaf_nested" />
+    <bpmn:dataObjectReference id="DataRef_notebook" name="__andres_control/expand_pif.ipynb" dataObjectRef="DataObject_notebook" />
+    <bpmn:dataObject id="DataObject_notebook" />
+    <bpmn:dataObjectReference id="DataRef_figures" name="Figure 1-5*.png y tablas de resultados" dataObjectRef="DataObject_figures" />
+    <bpmn:dataObject id="DataObject_figures" />
+    <bpmn:dataObjectReference id="DataRef_jrt" name="JRT_20260702_cancer inputs/outputs" dataObjectRef="DataObject_jrt" />
+    <bpmn:dataObject id="DataObject_jrt" />
+    <bpmn:dataObjectReference id="DataRef_design_lookup" name="enpg_design_lookup_2022_2024_minimal.rds" dataObjectRef="DataObject_design_lookup" />
+    <bpmn:dataObject id="DataObject_design_lookup" />
+    <bpmn:dataObjectReference id="DataRef_html" name="expand_pif.html + session_info" dataObjectRef="DataObject_html" />
+    <bpmn:dataObject id="DataObject_html" />
+    <bpmn:task id="Task_session_html" name="Registrar session_info y render HTML">
+      <bpmn:incoming>Flow_figures_session</bpmn:incoming>
+      <bpmn:outgoing>Flow_session_end</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_artifacts" name="Artefactos listos">
+      <bpmn:incoming>Flow_session_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_start_setup" sourceRef="Start_expand_pif" targetRef="Task_setup" />
+    <bpmn:sequenceFlow id="Flow_setup_enpg" sourceRef="Task_setup" targetRef="Task_enpg" />
+    <bpmn:sequenceFlow id="Flow_design_mortality" sourceRef="Task_design" targetRef="Task_mortality" />
+    <bpmn:sequenceFlow id="Flow_mortality_icd" sourceRef="Task_mortality" targetRef="Task_icd_flags" />
+    <bpmn:sequenceFlow id="Flow_icd_inputs" sourceRef="Task_icd_flags" targetRef="Task_aaf_inputs" />
+    <bpmn:sequenceFlow id="Flow_inputs_source" sourceRef="Task_aaf_inputs" targetRef="Task_source_engine" />
+    <bpmn:sequenceFlow id="Flow_save_wide" sourceRef="Task_save_aaf" targetRef="Task_wide_aaf" />
+    <bpmn:sequenceFlow id="Flow_wide_export_table" sourceRef="Task_wide_aaf" targetRef="Task_export_aaf_table" />
+    <bpmn:sequenceFlow id="Flow_export_join" sourceRef="Task_export_aaf_table" targetRef="Task_join_mortality" />
+    <bpmn:sequenceFlow id="Flow_join_population" sourceRef="Task_join_mortality" targetRef="Task_population" />
+    <bpmn:sequenceFlow id="Flow_population_jrt" sourceRef="Task_population" targetRef="Task_jrt_compare" />
+    <bpmn:sequenceFlow id="Flow_jrt_figures" sourceRef="Task_jrt_compare" targetRef="Task_figures_tables" />
+    <bpmn:sequenceFlow id="Flow_figures_session" sourceRef="Task_figures_tables" targetRef="Task_session_html" />
+    <bpmn:sequenceFlow id="Flow_enpg_design" sourceRef="Task_enpg" targetRef="Task_design" />
+    <bpmn:sequenceFlow id="Flow_source_registry" sourceRef="Task_source_engine" targetRef="Task_load_registry" />
+    <bpmn:sequenceFlow id="Flow_registry_compute" sourceRef="Task_load_registry" targetRef="Task_compute_aaf" />
+    <bpmn:sequenceFlow id="Flow_compute_save" sourceRef="Task_compute_aaf" targetRef="Task_save_aaf" />
+    <bpmn:sequenceFlow id="Flow_session_end" sourceRef="Task_session_html" targetRef="End_artifacts" />
+    <bpmn:association id="Assoc_notebook_start" sourceRef="DataRef_notebook" targetRef="Start_expand_pif" />
+    <bpmn:association id="Assoc_deis_input" sourceRef="DataRef_deis" targetRef="Task_mortality" />
+    <bpmn:association id="Assoc_mort_cache_output" sourceRef="Task_mortality" targetRef="DataRef_mort_cache" />
+    <bpmn:association id="Assoc_input_bundle_output" sourceRef="Task_aaf_inputs" targetRef="DataRef_input_bundle" />
+    <bpmn:association id="Assoc_aaf_table_output" sourceRef="Task_export_aaf_table" targetRef="DataRef_aaf_table" />
+    <bpmn:association id="Assoc_mort_excel_output" sourceRef="Task_join_mortality" targetRef="DataRef_mort_excel" />
+    <bpmn:association id="Assoc_jrt_io" sourceRef="DataRef_jrt" targetRef="Task_jrt_compare" />
+    <bpmn:association id="Assoc_figures_output" sourceRef="Task_figures_tables" targetRef="DataRef_figures" />
+    <bpmn:association id="Assoc_data_binge_output" sourceRef="Task_enpg" targetRef="DataRef_data_binge" />
+    <bpmn:association id="Assoc_enpg_input" sourceRef="DataRef_enpg" targetRef="Task_enpg" />
+    <bpmn:association id="Assoc_enpg_design" sourceRef="DataRef_enpg" targetRef="Task_design" />
+    <bpmn:association id="Assoc_design_lookup" sourceRef="DataRef_design_lookup" targetRef="Task_design" />
+    <bpmn:association id="Assoc_ine_input" sourceRef="DataRef_ine" targetRef="Task_population" />
+    <bpmn:association id="Assoc_registry_script" sourceRef="DataRef_registry" targetRef="Task_source_engine" />
+    <bpmn:association id="Assoc_engine_script" sourceRef="DataRef_engine" targetRef="Task_source_engine" />
+    <bpmn:association id="Assoc_rr_files" sourceRef="DataRef_rr_files" targetRef="Task_load_registry" />
+    <bpmn:association id="Assoc_engine_compute" sourceRef="DataRef_engine" targetRef="Task_compute_aaf" />
+    <bpmn:association id="Assoc_aaf_nested_output" sourceRef="Task_save_aaf" targetRef="DataRef_aaf_nested" />
+    <bpmn:association id="Assoc_html_output" sourceRef="Task_session_html" targetRef="DataRef_html" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_expand_pif">
+    <bpmndi:BPMNPlane id="BPMNPlane_expand_pif" bpmnElement="Collaboration_expand_pif">
+      <bpmndi:BPMNShape id="Participant_expand_pif_di" bpmnElement="Participant_expand_pif" isHorizontal="true">
+        <dc:Bounds x="160" y="313" width="4080" height="1247" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_outputs_di" bpmnElement="Lane_outputs" isHorizontal="true">
+        <dc:Bounds x="190" y="1120" width="4050" height="440" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_rr_engine_di" bpmnElement="Lane_rr_engine" isHorizontal="true">
+        <dc:Bounds x="190" y="870" width="4050" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_mortality_di" bpmnElement="Lane_mortality" isHorizontal="true">
+        <dc:Bounds x="190" y="680" width="4050" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_exposure_di" bpmnElement="Lane_exposure" isHorizontal="true">
+        <dc:Bounds x="190" y="485" width="4050" height="195" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_orchestration_di" bpmnElement="Lane_orchestration" isHorizontal="true">
+        <dc:Bounds x="190" y="313" width="4050" height="172" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_expand_pif_di" bpmnElement="Start_expand_pif">
+        <dc:Bounds x="250" y="390" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="214" y="346" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_setup_di" bpmnElement="Task_setup">
+        <dc:Bounds x="340" y="368" width="155" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_mortality_di" bpmnElement="Task_mortality">
+        <dc:Bounds x="990" y="728" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_icd_flags_di" bpmnElement="Task_icd_flags">
+        <dc:Bounds x="1210" y="728" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_aaf_inputs_di" bpmnElement="Task_aaf_inputs">
+        <dc:Bounds x="1430" y="536" width="185" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_wide_aaf_di" bpmnElement="Task_wide_aaf">
+        <dc:Bounds x="2540" y="1180" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_export_aaf_table_di" bpmnElement="Task_export_aaf_table">
+        <dc:Bounds x="2750" y="1180" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_join_mortality_di" bpmnElement="Task_join_mortality">
+        <dc:Bounds x="2960" y="1180" width="180" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_jrt_compare_di" bpmnElement="Task_jrt_compare">
+        <dc:Bounds x="3380" y="1180" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_figures_tables_di" bpmnElement="Task_figures_tables">
+        <dc:Bounds x="3590" y="1180" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_data_binge_di" bpmnElement="DataRef_data_binge">
+        <dc:Bounds x="575" y="1380" width="170" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="572" y="1453" width="195" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_deis_di" bpmnElement="DataRef_deis">
+        <dc:Bounds x="980" y="1380" width="160" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="976" y="1453" width="152" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_mort_cache_di" bpmnElement="DataRef_mort_cache">
+        <dc:Bounds x="1145" y="1380" width="170" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1128" y="1449" width="223" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_aaf_table_di" bpmnElement="DataRef_aaf_table">
+        <dc:Bounds x="2750" y="1300" width="180" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2798" y="1364" width="84" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_mort_excel_di" bpmnElement="DataRef_mort_excel">
+        <dc:Bounds x="2965" y="1300" width="185" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3018" y="1364" width="79" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_input_bundle_di" bpmnElement="DataRef_input_bundle">
+        <dc:Bounds x="1642" y="488" width="175" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1620" y="552" width="240" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_enpg_di" bpmnElement="Task_enpg">
+        <dc:Bounds x="550" y="504" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_design_di" bpmnElement="Task_design">
+        <dc:Bounds x="770" y="504" width="170" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_enpg_di" bpmnElement="DataRef_enpg">
+        <dc:Bounds x="646" y="603" width="140" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="643" y="667" width="134" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_population_di" bpmnElement="Task_population">
+        <dc:Bounds x="3170" y="684" width="185" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_ine_di" bpmnElement="DataRef_ine">
+        <dc:Bounds x="3168" y="790" width="190" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3132" y="854" width="260" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_source_engine_di" bpmnElement="Task_source_engine">
+        <dc:Bounds x="1660" y="884" width="180" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_load_registry_di" bpmnElement="Task_load_registry">
+        <dc:Bounds x="1873" y="884" width="180" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_compute_aaf_di" bpmnElement="Task_compute_aaf">
+        <dc:Bounds x="2100" y="884" width="180" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_save_aaf_di" bpmnElement="Task_save_aaf">
+        <dc:Bounds x="2320" y="884" width="180" height="88" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_engine_di" bpmnElement="DataRef_engine">
+        <dc:Bounds x="2130" y="1018" width="120" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2158" y="1082" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_registry_di" bpmnElement="DataRef_registry">
+        <dc:Bounds x="1680" y="1018" width="140" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1694" y="1085" width="112" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_rr_files_di" bpmnElement="DataRef_rr_files">
+        <dc:Bounds x="1887" y="1018" width="150" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1905" y="1085" width="110" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_aaf_nested_di" bpmnElement="DataRef_aaf_nested">
+        <dc:Bounds x="2310" y="1018" width="180" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2285" y="1086" width="230" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_notebook_di" bpmnElement="DataRef_notebook">
+        <dc:Bounds x="225" y="1380" width="130" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="210" y="1453" width="180" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_figures_di" bpmnElement="DataRef_figures">
+        <dc:Bounds x="3571" y="1300" width="190" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3624" y="1364" width="85" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_jrt_di" bpmnElement="DataRef_jrt">
+        <dc:Bounds x="3376" y="1300" width="180" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3423" y="1364" width="87" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_design_lookup_di" bpmnElement="DataRef_design_lookup">
+        <dc:Bounds x="993" y="488" width="150" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="956" y="552" width="250" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataRef_html_di" bpmnElement="DataRef_html">
+        <dc:Bounds x="3840" y="409" width="165" height="64" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3845" y="473" width="152" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_session_html_di" bpmnElement="Task_session_html">
+        <dc:Bounds x="3800" y="318" width="170" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_artifacts_di" bpmnElement="End_artifacts">
+        <dc:Bounds x="4060" y="340" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4039" y="380" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Assoc_input_bundle_output_di" bpmnElement="Assoc_input_bundle_output">
+        <di:waypoint x="1615" y="563" />
+        <di:waypoint x="1642" y="545" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_data_binge_output_di" bpmnElement="Assoc_data_binge_output">
+        <di:waypoint x="635" y="592" />
+        <di:waypoint x="660" y="1380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_enpg_note_di" bpmnElement="Assoc_enpg_note">
+        <di:waypoint x="550" y="559" />
+        <di:waypoint x="500" y="567" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_enpg_input_di" bpmnElement="Assoc_enpg_input">
+        <di:waypoint x="716" y="603" />
+        <di:waypoint x="635" y="592" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_enpg_design_di" bpmnElement="Assoc_enpg_design">
+        <di:waypoint x="780" y="603" />
+        <di:waypoint x="778" y="591" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_ine_input_di" bpmnElement="Assoc_ine_input">
+        <di:waypoint x="3263" y="790" />
+        <di:waypoint x="3263" y="773" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_registry_note_di" bpmnElement="Assoc_registry_note">
+        <di:waypoint x="1963" y="884" />
+        <di:waypoint x="1970" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_compute_note_di" bpmnElement="Assoc_compute_note">
+        <di:waypoint x="2190" y="884" />
+        <di:waypoint x="2190" y="286" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_engine_script_di" bpmnElement="Assoc_engine_script">
+        <di:waypoint x="2190" y="1018" />
+        <di:waypoint x="1750" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_engine_compute_di" bpmnElement="Assoc_engine_compute">
+        <di:waypoint x="2190" y="1018" />
+        <di:waypoint x="2190" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_registry_script_di" bpmnElement="Assoc_registry_script">
+        <di:waypoint x="1750" y="1018" />
+        <di:waypoint x="1750" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_rr_files_di" bpmnElement="Assoc_rr_files">
+        <di:waypoint x="1962" y="1018" />
+        <di:waypoint x="1963" y="972" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_aaf_nested_output_di" bpmnElement="Assoc_aaf_nested_output">
+        <di:waypoint x="2415" y="972" />
+        <di:waypoint x="2397" y="1018" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_notebook_start_di" bpmnElement="Assoc_notebook_start">
+        <di:waypoint x="290" y="1380" />
+        <di:waypoint x="268" y="426" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_figures_output_di" bpmnElement="Assoc_figures_output">
+        <di:waypoint x="3669" y="1268" />
+        <di:waypoint x="3670" y="1300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_jrt_io_di" bpmnElement="Assoc_jrt_io">
+        <di:waypoint x="3466" y="1300" />
+        <di:waypoint x="3465" y="1268" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_design_lookup_di" bpmnElement="Assoc_design_lookup">
+        <di:waypoint x="993" y="529" />
+        <di:waypoint x="940" y="539" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_html_output_di" bpmnElement="Assoc_html_output">
+        <di:waypoint x="3906" y="398" />
+        <di:waypoint x="3906" y="409" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_start_setup_di" bpmnElement="Flow_start_setup">
+        <di:waypoint x="286" y="408" />
+        <di:waypoint x="340" y="408" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_setup_enpg_di" bpmnElement="Flow_setup_enpg">
+        <di:waypoint x="495" y="408" />
+        <di:waypoint x="523" y="408" />
+        <di:waypoint x="523" y="548" />
+        <di:waypoint x="550" y="548" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_enpg_design_di" bpmnElement="Flow_enpg_design">
+        <di:waypoint x="720" y="548" />
+        <di:waypoint x="770" y="548" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_design_mortality_di" bpmnElement="Flow_design_mortality">
+        <di:waypoint x="940" y="548" />
+        <di:waypoint x="965" y="548" />
+        <di:waypoint x="965" y="772" />
+        <di:waypoint x="990" y="772" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_mortality_icd_di" bpmnElement="Flow_mortality_icd">
+        <di:waypoint x="1160" y="772" />
+        <di:waypoint x="1210" y="772" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_icd_inputs_di" bpmnElement="Flow_icd_inputs">
+        <di:waypoint x="1380" y="772" />
+        <di:waypoint x="1430" y="580" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_inputs_source_di" bpmnElement="Flow_inputs_source">
+        <di:waypoint x="1615" y="580" />
+        <di:waypoint x="1638" y="580" />
+        <di:waypoint x="1638" y="928" />
+        <di:waypoint x="1660" y="928" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_source_registry_di" bpmnElement="Flow_source_registry">
+        <di:waypoint x="1840" y="928" />
+        <di:waypoint x="1873" y="928" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_registry_compute_di" bpmnElement="Flow_registry_compute">
+        <di:waypoint x="2053" y="928" />
+        <di:waypoint x="2100" y="928" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_compute_save_di" bpmnElement="Flow_compute_save">
+        <di:waypoint x="2280" y="928" />
+        <di:waypoint x="2320" y="928" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_save_wide_di" bpmnElement="Flow_save_wide">
+        <di:waypoint x="2500" y="928" />
+        <di:waypoint x="2520" y="928" />
+        <di:waypoint x="2520" y="1224" />
+        <di:waypoint x="2540" y="1224" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wide_export_table_di" bpmnElement="Flow_wide_export_table">
+        <di:waypoint x="2710" y="1224" />
+        <di:waypoint x="2750" y="1224" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_export_join_di" bpmnElement="Flow_export_join">
+        <di:waypoint x="2920" y="1224" />
+        <di:waypoint x="2960" y="1224" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_join_population_di" bpmnElement="Flow_join_population">
+        <di:waypoint x="3140" y="1224" />
+        <di:waypoint x="3155" y="1224" />
+        <di:waypoint x="3155" y="728" />
+        <di:waypoint x="3170" y="728" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_population_jrt_di" bpmnElement="Flow_population_jrt">
+        <di:waypoint x="3355" y="728" />
+        <di:waypoint x="3368" y="728" />
+        <di:waypoint x="3368" y="1224" />
+        <di:waypoint x="3380" y="1224" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_jrt_figures_di" bpmnElement="Flow_jrt_figures">
+        <di:waypoint x="3550" y="1224" />
+        <di:waypoint x="3590" y="1224" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_figures_session_di" bpmnElement="Flow_figures_session">
+        <di:waypoint x="3760" y="1224" />
+        <di:waypoint x="3780" y="1224" />
+        <di:waypoint x="3780" y="358" />
+        <di:waypoint x="3800" y="358" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_session_end_di" bpmnElement="Flow_session_end">
+        <di:waypoint x="3970" y="358" />
+        <di:waypoint x="4060" y="358" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_deis_input_di" bpmnElement="Assoc_deis_input">
+        <di:waypoint x="1060" y="1380" />
+        <di:waypoint x="1075" y="816" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_mort_cache_output_di" bpmnElement="Assoc_mort_cache_output">
+        <di:waypoint x="1075" y="816" />
+        <di:waypoint x="1230" y="1380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_aaf_table_output_di" bpmnElement="Assoc_aaf_table_output">
+        <di:waypoint x="2835" y="1268" />
+        <di:waypoint x="2840" y="1300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_mort_excel_output_di" bpmnElement="Assoc_mort_excel_output">
+        <di:waypoint x="3050" y="1268" />
+        <di:waypoint x="3058" y="1300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_validation_note_di" bpmnElement="Assoc_validation_note">
+        <di:waypoint x="2410" y="884" />
+        <di:waypoint x="2410" y="173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_outputs_note_di" bpmnElement="Assoc_outputs_note">
+        <di:waypoint x="3675" y="1180" />
+        <di:waypoint x="3675" y="268" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_scope_di" bpmnElement="Assoc_scope">
+        <di:waypoint x="418" y="368" />
+        <di:waypoint x="418" y="299" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_design_note_di" bpmnElement="Assoc_design_note">
+        <di:waypoint x="814" y="504" />
+        <di:waypoint x="814" y="286" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Annotation_enpg_di" bpmnElement="Annotation_enpg">
+        <dc:Bounds x="280" y="537" width="220" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_compute_di" bpmnElement="Annotation_compute">
+        <dc:Bounds x="2015" y="200" width="425" height="86" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_registry_di" bpmnElement="Annotation_registry">
+        <dc:Bounds x="1797" y="80" width="385" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_validation_di" bpmnElement="Annotation_validation">
+        <dc:Bounds x="2260" y="87" width="432.69230769230774" height="86" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_outputs_di" bpmnElement="Annotation_outputs">
+        <dc:Bounds x="3495" y="110" width="306" height="158" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_scope_di" bpmnElement="Annotation_scope">
+        <dc:Bounds x="238" y="204" width="360" height="95" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_design_di" bpmnElement="Annotation_design">
+        <dc:Bounds x="649" y="200" width="240" height="86" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

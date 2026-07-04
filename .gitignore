@@ -22,6 +22,7 @@ desktop.ini
 # Notebook and render metadata it currently references
 !__andres_control/expand_pif.ipynb
 !__andres_control/expand_pif.html
+!__andres_control/expand_pif_pipeline_detailed.bpmn
 !expand_pif.html
 !__andres_control/references.bib
 !__andres_control/codex_handoff_adam_rr_full_override_caveman.md
