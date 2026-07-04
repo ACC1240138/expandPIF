@@ -5886,3 +5886,161 @@ Mojibake scan of repo (2026-07-03):
 - Lesson: any string literal compared against survey data that should carry n-tilde or an accent is a silent-failure risk. Prefer \uXXXX escapes or ASCII-only sentinels.
 
 Fecha/hora: 2026-07-03 18:04 -04:00
+
+---
+
+# 2026-07-04 13:23 -04:00 caveman handoff: JRT cancer compare all ages + source corrected to aaf_unified
+
+Pedido user:
+
+- "Hacer lo mismo pero para todas las categorias de ano, grupo de edad y genero/sexo, no solo ge60".
+- Conservar comentarios agregados por user.
+- Luego interpretar resultados y aclarar si diferencias venian de AAF o de muertes.
+- User aclaro expectativa: comparador debia usar logica `expand_pif` / `aaf_unified`, no una tabla suelta ajena.
+
+Que se hizo:
+
+- Edite `__andres_control/make_jrt_compatible_cancer_table_ge60.R`.
+- Primero amplie `cancer_compare_comparable` de solo `60+` a todas las filas de JRT:
+  - 7 anos: 2012, 2014, 2016, 2018, 2020, 2022, 2024.
+  - 4 grupos edad: 15-29, 30-44, 45-59, 60+.
+  - Female/Male segun corresponda por causa.
+  - Total esperado: 420 filas.
+- Mantengo salida `60+` aparte para compatibilidad.
+- Regenero:
+  - `JRT_20260702_cancer/pipeline_vs_jrt_cancer_all_ages.csv`
+  - `JRT_20260702_cancer/pipeline_vs_jrt_cancer_60plus.csv`
+  - `JRT_20260702_cancer/pipeline_cancer_aam_jrt_compatible_all_ages.txt`
+  - `JRT_20260702_cancer/pipeline_cancer_aam_jrt_compatible_60plus.txt`
+
+Correccion importante de interpretacion:
+
+- Al principio el script leia AAF desde `__andres_control/tabla_aaf_who2024_sexo_causa_ano.csv`.
+- Esa tabla NO es ajena al pipeline: si fue construida desde `expand_pif`.
+- Pero es una salida formateada/resumida, con AAF texto tipo `0.39 (0.18, 0.57)` y redondeo a 2 decimales.
+- Para comparar contra JRT con precision, cambie el script para leer AAF desde:
+  `__andres_control/aaf_nested_by_disease_20260703.rds`.
+- Ese RDS viene del chunk `mort-trends-age-sex-chile6a-estimating-AAFs-step2`, usa `aaf_unified.R`, trae auditoria, `prev_method = dirichlet`, `fd_uncertainty = TRUE`, `n_sim = 10000`, `n_pca = 1000`, `seed = 2125`, y tablas numericas completas.
+- Agregue helper `extract_aaf_unified_table()` para convertir columnas wide `Fem1_point`, `Male4_upper`, etc. a formato largo `Year/disease/sex/age_group/AAF/LL/UL`.
+- Agregue guard: si despues del join faltan `AAF`, `LL` o `UL`, el script falla y lista las llaves faltantes. Esto evita un merge silencioso con NA.
+
+ICD / edad:
+
+- Conteo DEIS se mantiene desde datos crudos, no desde objetos `mort`/`def` del notebook.
+- `60+` en este comparador es real: `age >= 60`, incluye 65+.
+- Oral cavity/pharynx para esta comparacion queda intencionalmente como `C00-C14`, o sea incluye C11.
+- Preserve comentarios originales del user:
+  - `2026-07-02= I did exclude C11...`
+  - `Shield / OMS-aligned...`
+- Agregue comentario aclaratorio nuevo:
+  - `2026-07-04= This JRT comparison intentionally includes C11 through C00-C14.`
+
+Validacion corrida:
+
+Comando:
+
+```powershell
+& "C:\Program Files\R\R-4.4.1\bin\Rscript.exe" "__andres_control\make_jrt_compatible_cancer_table_ge60.R"
+```
+
+Resultado:
+
+- Script termina OK.
+- Rows: 420.
+- Max abs mortality-count difference: 0.
+- Warnings no bloqueantes:
+  - locale C.UTF-8 no seteado al iniciar R.
+  - `readRDS(path_aaf)` traduce strings no representables a UTF-8.
+
+Resultados con AAF desde `aaf_nested_by_disease_20260703.rds`:
+
+- Filas comparadas: 420.
+- Muertes pipeline: 81,785.
+- Muertes JRT: 81,785.
+- Max abs diff muertes: 0.
+- Muertes atribuibles pipeline: 12,771.
+- Muertes atribuibles JRT: 12,771.
+- Diff neta atribuible: 0.
+- Sum abs diff attributable deaths: 50.
+- Filas con diff AAF central: 420 (por diferencias numericas muy pequenas).
+- Filas con diff attributable deaths: 47.
+- Max abs diff AAF central: 0.002927278.
+- Max abs diff attributable deaths por fila: 3.
+
+Top diff AAF central:
+
+- 2016 Liver Cancer Female 45-59:
+  - pipeline 0.4189273 vs JRT 0.416, diff +0.002927278.
+- 2018 Colorectal Cancer Male 15-29:
+  - pipeline 0.2851181 vs JRT 0.288, diff -0.002881919.
+- 2016 Liver Cancer Female 30-44:
+  - pipeline 0.4093680 vs JRT 0.412, diff -0.002631975.
+- 2018 Liver Cancer Male 15-29:
+  - pipeline 0.2773950 vs JRT 0.280, diff -0.002604953.
+- 2024 Oral Cavity and Pharynx Cancer Male 60+:
+  - pipeline 0.2675665 vs JRT 0.265, diff +0.002566522.
+
+Top diff attributable deaths:
+
+- 2022 Colorectal Cancer Male 60+:
+  - pipeline 546 vs JRT 543, diff +3.
+- 2022 Stomach Cancer Male 60+:
+  - pipeline 163 vs JRT 161, diff +2.
+- Remaining top rows mostly diff +/-1.
+
+By disease sum abs diff attributable deaths:
+
+- Liver Cancer: 13.
+- Colorectal Cancer: 10.
+- Stomach Cancer: 10.
+- Pancreatic Cancer: 6.
+- Breast Cancer: 5.
+- Larynx Cancer: 2.
+- Oesophagus Cancer: 2.
+- Oral Cavity and Pharynx Cancer: 2.
+
+By age sum abs diff attributable deaths:
+
+- 60+: 42.
+- 45-59: 7.
+- 30-44: 1.
+- 15-29: 0.
+
+Interpretacion final:
+
+- No hay diferencia de muertes entre JRT y pipeline en esta comparacion: `diff_muertes = 0` en 420/420 filas.
+- Con AAF desde el RDS interno de `aaf_unified`, las AAF centrales casi calzan con JRT.
+- La diferencia que aparecia antes con max abs AAF ~0.007 venia de usar `tabla_aaf_who2024_sexo_causa_ano.csv`, que es salida formateada/redondeada a 2 decimales del propio pipeline.
+- Con el RDS numerico, max abs AAF baja a ~0.00293 y el total de muertes atribuibles queda igual a JRT.
+- Diferencias restantes en punto central son pequenas: precision numerica / Monte Carlo / redondeo / detalles de corrida.
+
+Intervalos:
+
+- Diferencia grande sigue en LL/UL.
+- Max abs diff LL: 0.2746942.
+- Max abs diff UL: 0.2608624.
+- Max abs diff attributable lower: 192.
+- Max abs diff attributable upper: 199.
+- Top LL/UL discrepancias estan en Oral Cavity and Pharynx Cancer Female y Larynx Cancer Female, sobre todo 60+.
+- Esto NO viene de muertes ni de usar tabla externa.
+- Viene de que `aaf_unified` esta propagando incertidumbre con `fd_uncertainty = TRUE`, Dirichlet/Kish, y Monte Carlo; JRT parece usar intervalos mas angostos / otra incertidumbre para esos componentes.
+
+Estado git visible tras trabajo:
+
+- Modificado por esta tarea:
+  - `__andres_control/make_jrt_compatible_cancer_table_ge60.R`
+  - `JRT_20260702_cancer/pipeline_vs_jrt_cancer_60plus.csv`
+  - `JRT_20260702_cancer/pipeline_vs_jrt_cancer_all_ages.csv` nuevo/untracked antes de stage.
+  - outputs `.txt` regenerados en disco, pero no todos trackeados por git segun status.
+- Ya existian cambios no mios y no los toque/reverti:
+  - `.gitignore`
+  - `__andres_control/expand_pif.ipynb`
+  - `expand_pif.html`
+
+Pendiente recomendado:
+
+- Si se quiere comparar intervalos contra JRT de forma estricta, correr una variante de `aaf_unified` con knobs JRT-like:
+  - probablemente `fd_uncertainty = FALSE` o equivalente,
+  - revisar si JRT propaga p_form / gamma / RR former igual que nosotros,
+  - mantener point estimate desde RDS numerico.
+- No usar la CSV formateada para auditoria fina de diferencias de AAF; usar RDS interno o tablas numericas sin redondear.

@@ -22,7 +22,7 @@ path_jrt <- file.path(
 path_aaf <- file.path(
   project_root,
   "__andres_control",
-  "tabla_aaf_who2024_sexo_causa_ano.csv"
+  "aaf_nested_by_disease_20260703.rds"
 )
 path_deis_2012_2023 <- file.path(
   project_root,
@@ -62,6 +62,27 @@ parse_aaf_ci <- function(x, group_index) {
   as.numeric(match[, group_index])
 }
 
+extract_aaf_unified_table <- function(cancer_tables, table_name, disease_i, sex_i) {
+  tbl <- cancer_tables[[table_name]]
+  if (is.null(tbl)) {
+    stop("Missing aaf_unified cancer table: ", table_name)
+  }
+  prefix <- if (sex_i == "Female") "Fem" else "Male"
+  age_group_map <- c("1" = "15-29", "2" = "30-44", "3" = "45-59", "4" = "60+")
+  dplyr::bind_rows(lapply(names(age_group_map), function(group_i) {
+    tbl |>
+      dplyr::transmute(
+        Year = as.integer(Year),
+        disease = disease_i,
+        sex = sex_i,
+        age_group = unname(age_group_map[[group_i]]),
+        AAF = .data[[paste0(prefix, group_i, "_point")]],
+        LL = .data[[paste0(prefix, group_i, "_lower")]],
+        UL = .data[[paste0(prefix, group_i, "_upper")]]
+      )
+  }))
+}
+
 ref_cancer <- readr::read_tsv(
   path_jrt,
   locale = readr::locale(decimal_mark = ","),
@@ -73,33 +94,55 @@ ref_keys <- ref_cancer |>
 
 target_years <- sort(unique(ref_cancer$Year))
 
-aaf_name_map <- c(
-  "Breast Cancer" = "Breast Cancer",
-  "Colon and rectum Cancer" = "Colorectal Cancer",
-  "Larynx Cancer" = "Larynx Cancer",
-  "Liver Cancer" = "Liver Cancer",
-  "Oesophagus Cancer" = "Oesophagus Cancer",
-  "Oral Cavity and Pharynx Cancer" = "Oral Cavity and Pharynx Cancer",
-  "Pancreatic Cancer" = "Pancreatic Cancer",
-  "Stomach Cancer" = "Stomach Cancer"
+aaf_unified <- readRDS(path_aaf)
+cancer_tables <- aaf_unified[["family_bundles"]][["cancer"]][["raw_result"]][["tables"]]
+if (is.null(cancer_tables)) {
+  stop("Could not find cancer aaf_unified tables in: ", path_aaf)
+}
+
+aaf_table_map <- data.frame(
+  table_name = c(
+    "bcan_female",
+    "crcan_female", "crcan_male",
+    "lxcan_female", "lxcan_male",
+    "lican_female", "lican_male",
+    "oescan_female", "oescan_male",
+    "locan_female", "locan_male",
+    "panccan_female", "panccan_male",
+    "stomcan_female", "stomcan_male"
+  ),
+  disease = c(
+    "Breast Cancer",
+    "Colorectal Cancer", "Colorectal Cancer",
+    "Larynx Cancer", "Larynx Cancer",
+    "Liver Cancer", "Liver Cancer",
+    "Oesophagus Cancer", "Oesophagus Cancer",
+    "Oral Cavity and Pharynx Cancer", "Oral Cavity and Pharynx Cancer",
+    "Pancreatic Cancer", "Pancreatic Cancer",
+    "Stomach Cancer", "Stomach Cancer"
+  ),
+  sex = c(
+    "Female",
+    "Female", "Male",
+    "Female", "Male",
+    "Female", "Male",
+    "Female", "Male",
+    "Female", "Male",
+    "Female", "Male",
+    "Female", "Male"
+  ),
+  stringsAsFactors = FALSE
 )
 
-aaf_long <- readr::read_csv(path_aaf, show_col_types = FALSE) |>
-  dplyr::filter(Cause %in% names(aaf_name_map)) |>
-  tidyr::pivot_longer(
-    cols = -c(Cause, Year),
-    names_to = "sex_age",
-    values_to = "aaf_ci"
-  ) |>
-  dplyr::mutate(
-    disease = unname(aaf_name_map[Cause]),
-    sex = dplyr::if_else(grepl("^Women", sex_age), "Female", "Male"),
-    age_group = sub("^(Women|Men)\\s+", "", sex_age),
-    AAF = parse_aaf_ci(aaf_ci, 2),
-    LL = parse_aaf_ci(aaf_ci, 3),
-    UL = parse_aaf_ci(aaf_ci, 4)
-  ) |>
-  dplyr::select(Year, disease, sex, age_group, AAF, LL, UL)
+aaf_long <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i) {
+  extract_aaf_unified_table(
+    cancer_tables = cancer_tables,
+    table_name = aaf_table_map$table_name[[i]],
+    disease_i = aaf_table_map$disease[[i]],
+    sex_i = aaf_table_map$sex[[i]]
+  )
+})) |>
+  dplyr::filter(Year %in% target_years)
 
 deis_2012_2023 <- arrow::read_parquet(path_deis_2012_2023) |>
   dplyr::transmute(
@@ -157,6 +200,7 @@ cancer_code_map <- list(
   "Oesophagus Cancer" = icd_codes_s6("C", 15),
   # 2026-07-02= I did exclude C11: C00-C10 + C12-C14 
   # Shield / OMS-aligned = C00-C08 + C09-C10 + C12-C14
+  # 2026-07-04= This JRT comparison intentionally includes C11 through C00-C14.
   "Oral Cavity and Pharynx Cancer" = icd_codes_s6("C", 0:14),
   "Pancreatic Cancer" = icd_codes_s6("C", 25),
   "Stomach Cancer" = icd_codes_s6("C", 16)
@@ -194,15 +238,20 @@ pipeline_cancer <- ref_keys |>
     Year, disease, sex, age_group, AAF, LL, UL, muertes,
     att_mort, att_mort_low, att_mort_up
   )
+if (anyNA(pipeline_cancer[c("AAF", "LL", "UL")])) {
+  missing_aaf <- pipeline_cancer |>
+    dplyr::filter(is.na(AAF) | is.na(LL) | is.na(UL)) |>
+    dplyr::select(Year, disease, sex, age_group)
+  stop("Missing aaf_unified values after join: ", utils::capture.output(print(missing_aaf)))
+}
 # 2026-07-02= I did not include the 60+ age group in the original JRT table, 
 # but I will include it here for comparison.
 pipeline_cancer_60plus <- pipeline_cancer |>
   dplyr::filter(age_group == "60+")
 
-cancer_compare_comparable <- pipeline_cancer_60plus |>
+cancer_compare_comparable <- pipeline_cancer |>
   dplyr::full_join(
-    ref_cancer |>
-      dplyr::filter(age_group == "60+"),
+    ref_cancer,
     by = c("Year", "disease", "sex", "age_group"),
     suffix = c("_pipeline", "_jrt")
   ) |>
@@ -212,6 +261,9 @@ cancer_compare_comparable <- pipeline_cancer_60plus |>
     diff_att_mort = att_mort_pipeline - att_mort_jrt
   ) |>
   dplyr::arrange(disease, Year, sex, age_group)
+
+cancer_compare_60plus <- cancer_compare_comparable |>
+  dplyr::filter(age_group == "60+")
 
 readr::write_tsv(
   pipeline_cancer,
@@ -223,6 +275,10 @@ readr::write_tsv(
 )
 readr::write_csv(
   cancer_compare_comparable,
+  file.path(out_dir, "pipeline_vs_jrt_cancer_all_ages.csv")
+)
+readr::write_csv(
+  cancer_compare_60plus,
   file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv")
 )
 
@@ -232,11 +288,15 @@ if (nrow(pipeline_cancer) != 420L) {
 if (nrow(pipeline_cancer_60plus) != 105L) {
   stop("Unexpected 60+ row count: ", nrow(pipeline_cancer_60plus))
 }
-if (nrow(cancer_compare_comparable) != 105L) {
+if (nrow(cancer_compare_comparable) != 420L) {
   stop("Unexpected comparison row count: ", nrow(cancer_compare_comparable))
+}
+if (nrow(cancer_compare_60plus) != 105L) {
+  stop("Unexpected 60+ comparison row count: ", nrow(cancer_compare_60plus))
 }
 
 max_abs_diff_muertes <- max(abs(cancer_compare_comparable$diff_muertes), na.rm = TRUE)
+message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_all_ages.csv"))
 message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv"))
 message("Rows: ", nrow(cancer_compare_comparable))
 message("Max abs mortality-count difference: ", max_abs_diff_muertes)
