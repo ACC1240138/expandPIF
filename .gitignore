@@ -14,6 +14,10 @@
 !/.claude/**
 /.claude/settings.local.json
 
+# Windows system files
+desktop.ini
+**/desktop.ini
+
 
 # Notebook and render metadata it currently references
 !__andres_control/expand_pif.ipynb
@@ -59,6 +63,9 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !tabla_aaf_who2024_sexo_causa_ano.*
 !__andres_control/tabla_aaf_who2024_sexo_causa_ano.*
 !__andres_control/data_binge_sensitivity.rds
+!__andres_control/aaf_engine_inputs_bundle_*.rds
+!__andres_control/aaf_nested_by_disease_*.rds
+!__andres_control/aaf_nested_by_disease_*.rdsv
 !__andres_control/ine_basedatos.xlsx
 !__andres_control/ine_proyecciones_2012_2024.xlsx
 !__andres_control/Mortality Estimates WHO 2024.xlsx

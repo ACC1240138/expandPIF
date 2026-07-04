@@ -5826,3 +5826,63 @@ Interpretation:
   reference.
 
 Fecha/hora: 2026-07-02 19:05 -04:00
+
+---
+
+Mojibake bug: former drinker ">1 año" silently dropped (this was the WHOLE cancer AAF gap vs JRT)
+
+Main finding:
+
+- Notebook cell `enpg-consolidate` compares `oh2 == ">1 anio"` (ASCII a-n-i-o, bytes 3e 31 20 61 6e 69 6f).
+- Real survey value is `">1 año"` (with ñ, UTF-8 bytes ... 61 c3 b1 6f). The ñ was lost in an encoding/mojibake transform.
+- `">1 anio" == ">1 año"` is FALSE. Match count = 0 (verified: sum(oh2 == ">1 anio") = 0 vs sum(oh2 == ">1 año") = 24457).
+- Those ~24457 people never get marked fd, keep a high oh3, and `filter(oh3 <= 30)` removes them.
+- Result: former-drinker count fd = 20265 (should be 44949). p_form halved.
+
+4 places to fix in cell `enpg-consolidate`:
+
+- oh3 recode (`oh1 == "No" | oh2 == ">30" | oh2 == ">1 anio" ~ 0`)
+- prom_tragos recode (same condition)
+- cvolaj  (`oh2 == ">30" | oh2 == ">1 anio" ~ "fd"`)
+- cvolajms (same)
+
+Fix:
+
+- Replace `">1 anio"` -> `">1 año"`. best form is to write the ñ as the R Unicode escape (backslash, u, 0, 0, f, 1), so the SOURCE stays pure ASCII (cannot re-break on UTF-8/Latin1 re-save) while the VALUE equals the data's ">1 año".
+- Or ASCII-only alternative: former = `oh2 != "30 dias"` (the only current-drinker recency code).
+- Re-run notebook end-to-end, regenerate `tabla_aaf_who2024_sexo_causa_ano.csv`.
+- After fix: fd = 44949 -> AAF matches JRT.
+
+Who is right:
+
+- JRT right (includes >1 año former drinkers). Matches your OWN documented definition (cell 4 markdown: "no alcohol in the last 30 days or more than 1 year") and Sherk/InterMAHP.
+- Your code was NOT doing it at runtime because of the ">1 anio" mismatch. NOT a stale table -- a live encoding bug.
+- Published who2024 table was the buggy fd-low run.
+
+Proof it is only p_form (not RR, not method, not age):
+
+- Adam WHO2024 RR betas == Sherk betas for colorectal/liver/stomach/pancreas (verified in GENERAL_chronic_RR_2024_08_23.R). Even stomach uses the same below-1 curve.
+- edad_tramo==4 is between(edad,60,65) in the notebook == JRT. Not an age-cap issue.
+- Reproduced with fitdist(MLE)+Levin on both RDS: only p_form differs; gamma mean identical.
+  colorectal male 2024 60+: fd-low -> 0.246 (= your table 0.25), fd-high -> 0.384 (= JRT 0.383).
+
+Impact scope:
+
+- Affects ALL ages and ALL causes that use fd, not only 60+ and not only these cancers.
+- Every RR_fd-driven AAF was understated.
+
+Former-drinker caveat (report this):
+
+- For flat-RR cancers (colorectal, liver, stomach, pancreas) the fd term is ~90-100% of the AAF. Liver female = 99%.
+- Vulnerable to sick-quitter / reverse causation (worst = liver, RR_fd 2.68; liver disease is the reason to quit).
+- Do NOT floor AAF/PIF at 0: negatives are legitimate (stomach RR<1; RR_fd CI crossing 1) and must net across causes.
+- Report a sensitivity bracket per cell: AAF_full vs AAF at RR_fd=1 (former = abstainer). Liver female 60+ 2024: [0.006, 0.436].
+
+Mojibake scan of repo (2026-07-03):
+
+- No true mojibake bytes (double-encoded A-tilde / A-circ / smart-quote / UTF-8 BOM) in any .R / .ipynb / .qmd / .md.
+- Only accented literal in the whole comparison surface is ">1 año". Everything else is ASCII (No/Si/Hombre/Mujer/>30/30 dias/ltabs/fd/cat1-4).
+- So ">1 anio" in expand_pif.ipynb was the ONLY bug of this class. Fix it and the surface is clean.
+- Lesson: any string literal compared against survey data that should carry n-tilde or an accent is a silent-failure risk. Prefer \uXXXX escapes or ASCII-only sentinels.
+
+Fecha/hora: 2026-07-03 18:04 -04:00
