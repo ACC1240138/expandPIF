@@ -144,7 +144,8 @@ aaf_long <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i) {
 })) |>
   dplyr::filter(Year %in% target_years)
 
-deis_2012_2023 <- arrow::read_parquet(path_deis_2012_2023) |>
+# 2026-07-07= Use nanoparquet instead
+deis_2012_2023 <- nanoparquet::read_parquet(path_deis_2012_2023) |>
   dplyr::transmute(
     year = as.integer(year),
     gender = as.character(gender),

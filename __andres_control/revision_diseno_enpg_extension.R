@@ -1,378 +1,577 @@
 ###############################################################################
 # revision_diseno_enpg_extension.R
-# Extension of revision_diseno_enpg.R that estimates the additional clustering
-# factor for the PIF-relevant alcohol variables:
-#   - hed          : heavy episodic drinking (0/1)
-#   - cvolajms     : consumption category (factor, CHMS sensitivity)
-#   - volajohdiams : average daily grams of alcohol (CHMS sensitivity, continuous)
 #
-# Logic:
-#   This script merges the processed ENPG_BINGE.RDS back to a minimal embedded
-#   design lookup for the 2022 and 2024 waves, which are the only waves with
-#   UPM/REGION. The lookup keeps only id, REGION, UPM, and FACTOR_EXPANSION, so
-#   the full raw ENPG 2024 .dta is not required for this extension.
+# Advanced ENPG design extension for PIF/AAF uncertainty.
 #
-# Usage:
-#   source(file.path(gsub("__andres_control", "", getwd()),
-#                    "__andres_control", "revision_diseno_enpg_extension.R"))
+# What this file does
+# -------------------
+# 1. Reads a lightweight ENPG design cache created by:
+#      __andres_control/build_enpg_design_waves_2012_2024_list.R
 #
-# Andres GSC -- 2026-06-26
+# 2. Joins that cache back to ENPG_BINGE.RDS by year and respondent ID.
+#
+# 3. Derives the PIF/AAF-relevant alcohol variables:
+#      abs         : lifetime abstainer indicator.
+#      form        : former drinker indicator.
+#      hed         : HED among current drinkers.
+#      consumption : mean daily alcohol grams from the CHMS-calibrated variable.
+#
+# 4. Estimates, where possible, a cell-specific residual clustering factor:
+#      factor = (SE_survey_design / SE_Kish_only)^2
+#
+#    The cell is:
+#      year x age_group x sex x variable
+#
+#    The survey design is:
+#      PSU + REGION
+#
+#    This is deliberately REGION-level stratification. REGION is the comparable
+#    stratum used in the older-wave workflow. The 2024 ESTRATO design is not
+#    used here because the goal is a cell-specific replacement for the older
+#    REGION-level approximation, not a separate official-2024-only design.
+#
+# What is and is not possible
+# ---------------------------
+# It is possible to estimate own clustering factors by year, variable, age tramo,
+# and sex for waves with a validated PSU in the available files:
+#   2012, 2014, 2016, 2018, 2022, 2024.
+#
+# It is not possible from the current public 2020 RDS because there is no
+# validated PSU identifier exposed in the microdata. This does not mean that
+# the 2020 field design had no clustering; the public report describes a
+# clustered sample frame. It means that the available RDS only exposes
+# "seccion", which is too coarse to treat as a validated PSU without additional
+# documentation or a true manzana/conglomerate identifier.
+#
+# Outputs
+# -------
+# __andres_control/enpg_design_join_audit.csv
+# __andres_control/enpg_cluster_factors_by_year_variable_tramo.csv
+# __andres_control/enpg_design_table_cells_extension.csv
+#
+# No notebooks or Quarto files are edited by this script.
 ###############################################################################
 
-suppressPackageStartupMessages({
-  library(survey)
-  library(dplyr)
-  library(haven)
-})
+.t0 <- Sys.time()
+
+required_packages <- c("haven", "survey")
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+if (length(missing_packages) > 0L) {
+  stop(
+    "Missing required packages: ",
+    paste(missing_packages, collapse = ", "),
+    call. = FALSE
+  )
+}
+
 options(survey.lonely.psu = "adjust")
 
-# ----- paths -----------------------------------------------------------------
-base_dir <- file.path(gsub("__andres_control", "", getwd()))
-control_dir <- file.path(base_dir, "__andres_control")
-binge_path <- file.path(base_dir,
-                        "ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e",
-                        "ENPG_BINGE.RDS")
-design_lookup_path <- file.path(control_dir, "enpg_design_lookup_2022_2024_minimal.rds")
-
-# ----- base design helpers ---------------------------------------------------
-factor_diseno <- function(data, yvar, wvar, psu, strata) {
-  ok <- stats::complete.cases(data[, c(yvar, wvar, psu, strata)])
-  data <- data[ok, ]
-  w <- as.numeric(data[[wvar]])
-  neff <- sum(w)^2 / sum(w^2)
-  des <- survey::svydesign(ids = stats::reformulate(psu),
-                           strata = stats::reformulate(strata),
-                           weights = stats::reformulate(wvar),
-                           data = data,
-                           nest = TRUE)
-  m <- survey::svymean(stats::reformulate(yvar), des)
-  p <- as.numeric(stats::coef(m))
-  se_d <- as.numeric(survey::SE(m))
-  se_k <- sqrt(p * (1 - p) / neff)
-  data.frame(var = yvar, p = round(p, 4), n = nrow(data),
-             neff_kish = round(neff), deff_pesos = round(nrow(data) / neff, 2),
-             se_diseno = round(se_d, 5), se_kish = round(se_k, 5),
-             factor_adicional = round((se_d / se_k)^2, 3))
+repo_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+if (basename(repo_root) == "__andres_control") {
+  repo_root <- dirname(repo_root)
 }
 
-diag_upm <- function(data, psu) {
-  sz <- as.numeric(table(data[[psu]]))
-  cat(sprintf("   n=%d | PSU=%d | persons/PSU: med=%.1f mean=%.2f max=%d\n",
-              nrow(data), length(unique(data[[psu]])), median(sz), mean(sz), max(sz)))
+control_dir <- file.path(repo_root, "__andres_control")
+raw_dir <- file.path(
+  repo_root,
+  "Sex-and-age-differences-in-alcohol-attributable-mortality-in-Chile-between-2008-and-2022-main",
+  "Raw data"
+)
+
+cache_path <- file.path(raw_dir, "enpg_design_waves_2012_2024_list.RDS")
+binge_path <- file.path(
+  repo_root,
+  "ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e",
+  "ENPG_BINGE.RDS"
+)
+
+if (!file.exists(cache_path)) {
+  stop(
+    "Missing lightweight ENPG design cache: ", cache_path, "\n",
+    "Run __andres_control/build_enpg_design_waves_2012_2024_list.R first.",
+    call. = FALSE
+  )
+}
+if (!file.exists(binge_path)) {
+  stop("Missing ENPG_BINGE.RDS: ", binge_path, call. = FALSE)
 }
 
-# ----- helper: weighted variance for Kish SE of a mean -----------------------
-wtd_var <- function(x, w) {
-  xbar <- sum(w * x, na.rm = TRUE) / sum(w, na.rm = TRUE)
-  sum(w * (x - xbar)^2, na.rm = TRUE) / sum(w, na.rm = TRUE) *
-    (sum(w, na.rm = TRUE) / (sum(w, na.rm = TRUE) - 1))
+to_numeric <- function(x) {
+  suppressWarnings(as.numeric(haven::zap_labels(x)))
 }
 
-# ----- helper: additional design factor for the mean of a continuous var -----
-factor_diseno_mean <- function(data, yvar, wvar, psu, strata) {
-  ok   <- stats::complete.cases(data[, c(yvar, wvar, psu, strata)])
-  data <- data[ok, ]
-  w    <- as.numeric(data[[wvar]])
-  y    <- as.numeric(data[[yvar]])
-  neff <- sum(w)^2 / sum(w^2)
-  des  <- svydesign(ids = reformulate(psu), strata = reformulate(strata),
-                    weights = reformulate(wvar), data = data, nest = TRUE)
-  m    <- svymean(reformulate(yvar), des)
-  mu   <- as.numeric(coef(m)); se_d <- as.numeric(SE(m))
-  se_k <- sqrt(wtd_var(y, w) / neff)
-  data.frame(var = paste0(yvar, " (mean)"), p = round(mu, 4), n = nrow(data),
-             neff_kish = round(neff), deff_pesos = round(nrow(data) / neff, 2),
-             se_diseno = round(se_d, 5), se_kish = round(se_k, 5),
-             factor_adicional = round((se_d / se_k)^2, 3))
+weighted_var <- function(x, w) {
+  ok <- is.finite(x) & is.finite(w) & w > 0
+  x <- x[ok]
+  w <- w[ok]
+  if (length(x) < 2L || sum(w) <= 0) {
+    return(NA_real_)
+  }
+  mu <- sum(w * x) / sum(w)
+  sum(w * (x - mu)^2) / sum(w)
 }
 
-# ----- helper: additional design factor for each level of a factor -----------
-factor_diseno_cat <- function(data, yvar, wvar, psu, strata) {
-  ok   <- stats::complete.cases(data[, c(yvar, wvar, psu, strata)])
-  data <- data[ok, ]
-  data[[yvar]] <- as.factor(data[[yvar]])
-  w    <- as.numeric(data[[wvar]])
-  neff <- sum(w)^2 / sum(w^2)
-  des  <- svydesign(ids = reformulate(psu), strata = reformulate(strata),
-                    weights = reformulate(wvar), data = data, nest = TRUE)
-  props <- svymean(reformulate(yvar), des)
-  p     <- as.numeric(coef(props))
-  se_d  <- as.numeric(SE(props))
-  se_k  <- sqrt(p * (1 - p) / neff)
-  lvl_lbl <- gsub(paste0(yvar), "", names(coef(props)))
-  out   <- data.frame(var = paste0(yvar, " (modal: ", lvl_lbl, ")"),
-                      p = round(p, 4), n = nrow(data),
-                      neff_kish = round(neff), deff_pesos = round(nrow(data) / neff, 2),
-                      se_diseno = round(se_d, 5), se_kish = round(se_k, 5),
-                      factor_adicional = round((se_d / se_k)^2, 3),
-                      stringsAsFactors = FALSE)
-  # return only the modal category as a single summary row
-  out <- out[which.max(out$p), ]
-  rownames(out) <- NULL
+make_age_group <- function(age) {
+  # Exposure convention used by the notebook objects:
+  #   1 = 15-29, 2 = 30-44, 3 = 45-59, 4 = 60-65.
+  out <- rep(NA_integer_, length(age))
+  out[age >= 15 & age <= 29] <- 1L
+  out[age >= 30 & age <= 44] <- 2L
+  out[age >= 45 & age <= 59] <- 3L
+  out[age >= 60 & age <= 65] <- 4L
   out
 }
 
-# ----- load processed binge data ---------------------------------------------
-enpg_binge <- readRDS(binge_path)
-
-if (!file.exists(design_lookup_path)) {
-  stop("Missing minimal ENPG design lookup: ", design_lookup_path,
-       "\nRebuild it from the raw 2022/2024 ENPG files before running this script.")
-}
-design_lookup <- readRDS(design_lookup_path)
-expected_lookup <- c("enpg2022", "enpg2024")
-if (!identical(names(design_lookup), expected_lookup)) {
-  stop("Unexpected design lookup names. Expected: ", paste(expected_lookup, collapse = ", "))
-}
-required_design_cols <- c("id", "REGION", "UPM", "FACTOR_EXPANSION")
-missing_design_cols <- lapply(design_lookup, function(x) setdiff(required_design_cols, names(x)))
-if (any(lengths(missing_design_cols) > 0)) {
-  stop("Minimal design lookup is missing columns: ",
-       paste(unlist(missing_design_cols), collapse = ", "))
+age_group_label <- function(age_group) {
+  c("1" = "15-29", "2" = "30-44", "3" = "45-59", "4" = "60-65")[
+    as.character(age_group)
+  ]
 }
 
-# ----- per-year CHMS totals needed for the conversion factor -----------------
-total_volCHMS <- enpg_binge %>%
-  dplyr::filter(edad >= 15) %>%
-  dplyr::mutate(
-    db = ifelse(db >= 88, NA, db),
-    oh3 = as.numeric(haven::zap_labels(oh3)),
-    oh3 = ifelse(oh3 %in% c(88, 99), NA_real_, oh3),
-    oh3 = case_when(
-      oh1 == "No" | oh2 == ">30" | oh2 == ">1 año" ~ 0,
-      TRUE ~ oh3
-    ),
-    prom_tragos = case_when(
-      oh1 == "No" | oh2 == ">30" | oh2 == ">1 año" ~ 0,
-      audit2 == "0-2" ~ 1,
-      audit2 == "3-4" ~ 3.5,
-      audit2 == "5-6" ~ 5.5,
-      audit2 == "7-8" ~ 7.5,
-      audit2 == "9 o mas" ~ 9
-    ),
-    diasalchab = pmax(oh3 - db, 0),
-    volalchab = diasalchab * prom_tragos,
-    volbinge = ifelse(sexo == "Hombre", db * 5, db * 4),
-    voltotMS = (volbinge + volalchab) * 15.7,
-    voltotMINSAL = voltotMS / 30,
-    volCHMS = voltotMINSAL * 365
-  ) %>%
-  dplyr::filter(!is.na(volCHMS), oh3 <= 30) %>%
-  dplyr::group_by(year) %>%
-  dplyr::summarise(
-    pop = sum(exp),
-    pc_totalvolCHMS = sum(volCHMS * exp) / pop,
-    .groups = "drop"
-  )
+make_psu_key <- function(year, commune, psu) {
+  # PSU codes can repeat across communes and waves. Keep the key conservative.
+  paste(year, commune, psu, sep = "|")
+}
 
-# conversion factor sent by ACC (same as expand_pif.ipynb)
+collapse_design_cache <- function(cache) {
+  rows <- lapply(cache$waves, function(wave) {
+    keep <- c(
+      "year", "id_join", "weight", "region", "commune", "psu",
+      "psu_validated", "psu_source"
+    )
+    missing <- setdiff(keep, names(wave))
+    if (length(missing) > 0L) {
+      stop("Cached wave is missing columns: ", paste(missing, collapse = ", "))
+    }
+    wave[, keep, drop = FALSE]
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out$id_join <- as.character(out$id_join)
+  out$year <- as.integer(out$year)
+  out$weight <- as.numeric(out$weight)
+  out$region <- as.character(out$region)
+  out$commune <- as.character(out$commune)
+  out$psu <- as.character(out$psu)
+  out$psu_validated <- as.logical(out$psu_validated)
+  out
+}
+
+audit_join <- function(data) {
+  years <- sort(unique(data$year))
+  rows <- lapply(years, function(y) {
+    d <- data[data$year == y, , drop = FALSE]
+    data.frame(
+      year = y,
+      rows = nrow(d),
+      matched_design = sum(!is.na(d$weight)),
+      unmatched_design = sum(is.na(d$weight)),
+      match_rate = mean(!is.na(d$weight)),
+      validated_psu_rows = sum((d$psu_validated %in% TRUE) & !is.na(d$psu)),
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
+}
+
 conversion <- function(x, vol) {
+  # Conversion factor sent by ACC and used in expand_pif.ipynb.
   vol_oms <- x * 0.8
   oms <- round((vol_oms * 0.789) * 1000, 2)
   oms / vol
 }
 
-# ----- common derivation of hed/cvolajms/volajohdiams ------------------------
-deriv_vars <- function(df, yr) {
-  pc_ms <- total_volCHMS$pc_totalvolCHMS[total_volCHMS$year == yr]
-  df %>%
-    dplyr::mutate(
-      db = ifelse(db >= 88, NA, db),
-      oh3 = as.numeric(haven::zap_labels(oh3)),
-      oh3 = ifelse(oh3 %in% c(88, 99), NA_real_, oh3),
-      oh3 = case_when(
-        oh1 == "No" | oh2 == ">30" | oh2 == ">1 año" ~ 0,
-        TRUE ~ oh3
-      ),
-      prom_tragos = case_when(
-        oh1 == "No" | oh2 == ">30" | oh2 == ">1 año" ~ 0,
-        audit2 == "0-2" ~ 1,
-        audit2 == "3-4" ~ 3.5,
-        audit2 == "5-6" ~ 5.5,
-        audit2 == "7-8" ~ 7.5,
-        audit2 == "9 o mas" ~ 9
-      ),
-      diasalchab = pmax(oh3 - db, 0),
-      volalchab = diasalchab * prom_tragos,
-      volbinge = ifelse(sexo == "Hombre", db * 5, db * 4),
-      voltotMS = (volbinge + volalchab) * 15.7,
-      voltotMINSAL = voltotMS / 30,
-      volCHMS = voltotMINSAL * 365,
-      volajms = volCHMS * conversion(7.9, pc_ms),
-      volajohdiams = volajms / 365,
-      cvolajms = case_when(
-        oh1 == "No" ~ "ltabs",
-        oh2 == ">30" | oh2 == ">1 año" ~ "fd",
-        sexo == "Mujer" & volajohdiams > 0 & volajohdiams <= 19.99 ~ "cat1",
-        sexo == "Mujer" & volajohdiams >= 20 & volajohdiams <= 39.99 ~ "cat2",
-        sexo == "Mujer" & volajohdiams >= 40 & volajohdiams <= 100 ~ "cat3",
-        sexo == "Mujer" & volajohdiams > 100 ~ "cat4",
-        sexo == "Hombre" & volajohdiams > 0 & volajohdiams <= 39.99 ~ "cat1",
-        sexo == "Hombre" & volajohdiams >= 40 & volajohdiams <= 59.99 ~ "cat2",
-        sexo == "Hombre" & volajohdiams >= 60 & volajohdiams <= 100 ~ "cat3",
-        sexo == "Hombre" & volajohdiams > 100 ~ "cat4",
-        TRUE ~ NA_character_
-      ),
-      hed = as.integer(db > 0)
-    ) %>%
-    dplyr::filter(oh3 <= 30)
+derive_alcohol_variables <- function(data) {
+  # This block mirrors the existing PIF/AAF alcohol derivation, but keeps the
+  # survey design fields attached. Non-current drinkers keep missing consumption
+  # means, while abstainer/former indicators remain defined.
+  data$db_num <- to_numeric(data$db)
+  data$db_num[data$db_num >= 88] <- NA_real_
+
+  data$oh3_num <- to_numeric(data$oh3)
+  data$oh3_num[data$oh3_num %in% c(88, 99)] <- NA_real_
+
+  data$current_drinker <- !is.na(data$oh2) & data$oh2 == "30 dias"
+  data$abstainer <- !is.na(data$oh1) & data$oh1 == "No"
+  data$former_drinker <- !is.na(data$oh1) & data$oh1 == "Si" & !data$current_drinker
+
+  data$oh3_clean <- data$oh3_num
+  data$oh3_clean[!data$current_drinker] <- 0
+
+  data$prom_tragos <- NA_real_
+  data$prom_tragos[!data$current_drinker | data$abstainer] <- 0
+  data$prom_tragos[data$audit2 == "0-2"] <- 1
+  data$prom_tragos[data$audit2 == "3-4"] <- 3.5
+  data$prom_tragos[data$audit2 == "5-6"] <- 5.5
+  data$prom_tragos[data$audit2 == "7-8"] <- 7.5
+  data$prom_tragos[data$audit2 == "9 o mas"] <- 9
+
+  data$diasalchab <- pmax(data$oh3_clean - data$db_num, 0)
+  data$volalchab <- data$diasalchab * data$prom_tragos
+  data$volbinge <- ifelse(data$sexo == "Hombre", data$db_num * 5, data$db_num * 4)
+  data$voltotMS <- (data$volbinge + data$volalchab) * 15.7
+  data$voltotMINSAL <- data$voltotMS / 30
+  data$volCHMS <- data$voltotMINSAL * 365
+
+  data$analysis_weight <- ifelse(is.finite(data$weight) & data$weight > 0, data$weight, data$exp)
+
+  pc_by_year <- tapply(seq_len(nrow(data)), data$year, function(idx) {
+    d <- data[idx, , drop = FALSE]
+    ok <- is.finite(d$volCHMS) & is.finite(d$analysis_weight) &
+      d$analysis_weight > 0 & d$oh3_clean <= 30
+    if (!any(ok)) {
+      return(NA_real_)
+    }
+    sum(d$volCHMS[ok] * d$analysis_weight[ok]) / sum(d$analysis_weight[ok])
+  })
+
+  data$pc_totalvolCHMS <- as.numeric(pc_by_year[as.character(data$year)])
+  data$volajms <- data$volCHMS * conversion(7.9, data$pc_totalvolCHMS)
+  data$volajohdiams <- data$volajms / 365
+
+  data$cvolajms <- NA_character_
+  data$cvolajms[data$abstainer] <- "ltabs"
+  data$cvolajms[data$former_drinker] <- "fd"
+
+  female <- data$sexo == "Mujer"
+  male <- data$sexo == "Hombre"
+  v <- data$volajohdiams
+
+  data$cvolajms[female & v > 0 & v <= 19.99] <- "cat1"
+  data$cvolajms[female & v >= 20 & v <= 39.99] <- "cat2"
+  data$cvolajms[female & v >= 40 & v <= 100] <- "cat3"
+  data$cvolajms[female & v > 100] <- "cat4"
+  data$cvolajms[male & v > 0 & v <= 39.99] <- "cat1"
+  data$cvolajms[male & v >= 40 & v <= 59.99] <- "cat2"
+  data$cvolajms[male & v >= 60 & v <= 100] <- "cat3"
+  data$cvolajms[male & v > 100] <- "cat4"
+
+  data$abs <- as.integer(data$cvolajms == "ltabs")
+  data$form <- as.integer(data$cvolajms == "fd")
+  data$hed <- ifelse(data$current_drinker & !is.na(data$db_num), as.integer(data$db_num > 0), NA_integer_)
+  data$consumption <- data$volajohdiams
+
+  data$age_group <- make_age_group(as.numeric(data$edad))
+  data$age_group_label <- age_group_label(data$age_group)
+  data$sex <- ifelse(data$sexo == "Hombre", "male", ifelse(data$sexo == "Mujer", "female", NA_character_))
+  data$psu_key <- make_psu_key(data$year, data$commune, data$psu)
+  data
 }
 
-# ----- 2022 ------------------------------------------------------------------
-d22_ext <- enpg_binge %>%
-  dplyr::filter(year == 2022, edad >= 15) %>%
-  dplyr::select(id, year, sexo, edad, exp, oh1, oh2, oh3, db, audit2) %>%
-  dplyr::mutate(id = as.character(id)) %>%
-  dplyr::inner_join(
-    design_lookup$enpg2022 %>% dplyr::mutate(id = as.character(id)),
-    by = "id"
-  ) %>%
-  deriv_vars(yr = 2022)
-
-cat("\n== ENPG 2022: hed / cvolajms / volajohdiams ==\n")
-diag_upm(d22_ext, "UPM")
-res22 <- rbind(
-  factor_diseno(d22_ext, "hed", "FACTOR_EXPANSION", "UPM", "REGION"),
-  factor_diseno_cat(d22_ext, "cvolajms", "FACTOR_EXPANSION", "UPM", "REGION"),
-  factor_diseno_mean(d22_ext, "volajohdiams", "FACTOR_EXPANSION", "UPM", "REGION")
-)
-rownames(res22) <- NULL
-print(res22)
-
-# ----- 2024 ------------------------------------------------------------------
-d24_ext <- enpg_binge %>%
-  dplyr::filter(year == 2024, edad >= 15) %>%
-  dplyr::select(id, year, sexo, edad, exp, oh1, oh2, oh3, db, audit2) %>%
-  dplyr::mutate(id = as.numeric(as.character(id))) %>%
-  dplyr::inner_join(
-    design_lookup$enpg2024 %>% dplyr::mutate(id = as.numeric(id)),
-    by = "id"
-  ) %>%
-  deriv_vars(yr = 2024)
-
-cat("\n== ENPG 2024: hed / cvolajms / volajohdiams ==\n")
-diag_upm(d24_ext, "UPM")
-res24 <- rbind(
-  factor_diseno(d24_ext, "hed", "FACTOR_EXPANSION", "UPM", "REGION"),
-  factor_diseno_cat(d24_ext, "cvolajms", "FACTOR_EXPANSION", "UPM", "REGION"),
-  factor_diseno_mean(d24_ext, "volajohdiams", "FACTOR_EXPANSION", "UPM", "REGION")
-)
-rownames(res24) <- NULL
-print(res24)
-
-# ----- summary ---------------------------------------------------------------
-all_factors <- rbind(res22, res24)
-rownames(all_factors) <- NULL
-cat("\n>>> Additional clustering factors by variable/year:\n")
-print(all_factors)
-
-factor_hardcode_ext <- mean(all_factors$factor_adicional)
-cat(sprintf("\n>>> ADDITIONAL FACTOR averaged across hed/cvolajms/volajohdiams: %.2f\n",
-            factor_hardcode_ext))
-cat("    Previous cur_mes factor is not recomputed here because the minimal\n")
-cat("    design lookup intentionally omits raw OH_1/OH_4 survey variables.\n")
-cat("    Suggested usage: neff_corr <- neff_kish / factor_hardcode_ext\n")
-
-# =============================================================================
-# PER-CELL DESIGN TABLE (request 2026-06-30)
-# -----------------------------------------------------------------------------
-# Decomposition (chosen granularity: PSU factor PER VARIABLE only):
-#   neff_kish          : per (year x age_group x sex) -- the cell precision from
-#                        the survey weights, computed for EVERY wave.
-#   additional_factor  : per VARIABLE (abs/form/hed/consumption), the PSU
-#                        clustering inflation, estimated from 2022+2024 (only
-#                        waves with UPM/REGION) and averaged -> a single stable
-#                        number per question, applied to all years.
-#   neff_corr          : neff_kish / additional_factor  -- exactly what the
-#                        aaf_unified engine consumes (neff_eff).
-# Pass it to compute_*_aaf_from_registry() via design_table_to_engine_lists().
-# =============================================================================
-
-# --- (A) per-variable PSU factor (pooled 2022 + 2024) ------------------------
-# abs / former drinker come from the cvolajms levels; hed dummy and the
-# consumption mean (volajohdiams) are already derived in deriv_vars().
-add_status_dummies <- function(df) {
-  df$abs  <- as.integer(df$cvolajms == "ltabs")
-  df$form <- as.integer(df$cvolajms == "fd")
-  df
-}
-d22f <- add_status_dummies(d22_ext)
-d24f <- add_status_dummies(d24_ext)
-
-factor_one <- function(df, var, kind) {
-  if (identical(kind, "mean")) factor_diseno_mean(df, var, "FACTOR_EXPANSION", "UPM", "REGION")
-  else                         factor_diseno(df, var, "FACTOR_EXPANSION", "UPM", "REGION")
-}
-var_spec <- list(abs = c("abs", "bin"), form = c("form", "bin"),
-                 hed = c("hed", "bin"), consumption = c("volajohdiams", "mean"))
-additional_factor <- vapply(names(var_spec), function(v) {
-  f22 <- factor_one(d22f, var_spec[[v]][1], var_spec[[v]][2])$factor_adicional
-  f24 <- factor_one(d24f, var_spec[[v]][1], var_spec[[v]][2])$factor_adicional
-  round(mean(c(f22, f24)), 3)
-}, numeric(1))
-cat("\n>>> additional_factor (PSU clustering) per variable, pooled 2022+2024:\n")
-print(additional_factor)
-
-# --- (B) neff_kish per (year x age_group x sex), all waves -------------------
-# Pipeline 15-64 age groups: 1=15-29, 2=30-44, 3=45-59, 4=60-64.
-neff_cells <- enpg_binge %>%
-  dplyr::mutate(edad = as.numeric(edad), w = as.numeric(exp)) %>%
-  dplyr::filter(edad >= 15, edad < 65, is.finite(w), w > 0) %>%
-  dplyr::mutate(
-    age_group = as.integer(as.character(cut(edad, breaks = c(15, 30, 45, 60, 65),
-                                            right = FALSE, labels = 1:4))),
-    sex = dplyr::case_when(sexo == "Hombre" ~ "male", sexo == "Mujer" ~ "female", TRUE ~ NA_character_)
-  ) %>%
-  dplyr::filter(!is.na(age_group), !is.na(sex)) %>%
-  dplyr::group_by(year, age_group, sex) %>%
-  dplyr::summarise(n = dplyr::n(), neff_kish = round(sum(w)^2 / sum(w^2)), .groups = "drop") %>%
-  as.data.frame()
-
-# --- (C) tidy table: one row per (year x age_group x sex x variable) ---------
-design_table_cells <- do.call(rbind, lapply(names(additional_factor), function(v) {
-  d <- neff_cells
-  d$variable <- v
-  d$additional_factor <- additional_factor[[v]]
-  d$neff_corr <- round(d$neff_kish / d$additional_factor)
-  d
-}))
-design_table_cells <- design_table_cells[
-  order(design_table_cells$variable, design_table_cells$year,
-        design_table_cells$sex, design_table_cells$age_group),
-  c("year", "age_group", "sex", "variable", "n", "neff_kish", "additional_factor", "neff_corr")]
-rownames(design_table_cells) <- NULL
-cat("\n>>> design_table_cells (head) -- kable this in the notebook:\n")
-print(utils::head(design_table_cells, 12))
-cat(sprintf("    %d rows = %d years x 4 age-groups x 2 sexes x %d variables\n",
-            nrow(design_table_cells), length(unique(neff_cells$year)), length(additional_factor)))
-
-# --- (D) converter to aaf_unified engine inputs ------------------------------
-# neff(year,group,sex)  -> neff_kish for that cell (variable-independent precision)
-# design_factor         -> list(abs, form, hed)  PSU factors per prevalence question
-# neff_consumption(...) -> neff_kish for that cell ; design_factor_consumption scalar
-# Pass these straight into compute_*_aaf_from_registry().
-design_table_to_engine_lists <- function(tbl = design_table_cells, neff_default = 1000) {
-  cells <- unique(tbl[, c("year", "age_group", "sex", "neff_kish")])
-  kish  <- stats::setNames(cells$neff_kish, paste(cells$year, cells$age_group, cells$sex, sep = "|"))
-  af    <- tapply(tbl$additional_factor, tbl$variable, function(z) z[1])
-  neff_fun <- function(year, group, sex) {
-    v <- kish[[paste(year, group, sex, sep = "|")]]
-    if (is.null(v) || !is.finite(v)) neff_default else as.numeric(v)
+cell_design_stats <- function(data) {
+  if (nrow(data) == 0L || !any(data$psu_validated)) {
+    return(list(n_psu = NA_integer_, n_strata = NA_integer_, lonely_strata = NA_integer_))
   }
+  psu_by_stratum <- unique(data[, c("region", "psu_key"), drop = FALSE])
+  n_by_stratum <- table(psu_by_stratum$region)
   list(
-    neff = neff_fun,
-    design_factor = list(abs = as.numeric(af[["abs"]]), form = as.numeric(af[["form"]]),
-                         hed = as.numeric(af[["hed"]])),
-    neff_consumption = neff_fun,
-    design_factor_consumption = as.numeric(af[["consumption"]])
+    n_psu = length(unique(data$psu_key)),
+    n_strata = length(unique(data$region)),
+    lonely_strata = sum(n_by_stratum == 1L)
   )
 }
 
-cat("\n>>> Ready. In expand_pif.ipynb:\n")
-cat("    knitr::kable(design_table_cells, 'markdown',\n")
-cat("      caption = 'Kish plus PSU correction per variable for each year, age group and sex')\n")
-cat("    kish <- design_table_to_engine_lists()\n")
-cat("    compute_cv_aaf_from_registry(load_adam_rr_registry('ihd'), ...,\n")
-cat("        neff = kish$neff, design_factor = kish$design_factor,\n")
-cat("        neff_consumption = kish$neff_consumption,\n")
-cat("        design_factor_consumption = kish$design_factor_consumption)\n")
+estimate_cell_factor <- function(data, variable, y_col, kind) {
+  y <- as.numeric(data[[y_col]])
+  w <- as.numeric(data$analysis_weight)
+  ok <- is.finite(y) & is.finite(w) & w > 0 & !is.na(data$year) &
+    !is.na(data$age_group) & !is.na(data$sex)
+  d <- data[ok, , drop = FALSE]
+  y <- y[ok]
+  w <- w[ok]
+
+  stats <- cell_design_stats(d)
+  n <- nrow(d)
+  weighted_n <- if (n > 0L) sum(w) else NA_real_
+  neff_kish <- if (n > 0L) sum(w)^2 / sum(w^2) else NA_real_
+
+  prevalence_or_mean <- NA_real_
+  se_kish <- NA_real_
+  factor_additional <- NA_real_
+  se_design <- NA_real_
+  factor_source <- "not_estimated"
+
+  if (n < 2L || !is.finite(neff_kish) || neff_kish <= 0) {
+    factor_source <- "insufficient_complete_cases"
+  } else {
+    prevalence_or_mean <- sum(y * w) / sum(w)
+    if (identical(kind, "mean")) {
+      se_kish <- sqrt(weighted_var(y, w) / neff_kish)
+    } else {
+      se_kish <- sqrt(prevalence_or_mean * (1 - prevalence_or_mean) / neff_kish)
+    }
+
+    has_design <- all(d$psu_validated) && all(!is.na(d$psu_key)) && all(!is.na(d$region))
+    has_variation <- length(unique(y)) > 1L && is.finite(se_kish) && se_kish > 0
+
+    if (!has_design) {
+      factor_source <- "no_validated_psu_for_year"
+    } else if (!has_variation) {
+      factor_source <- "no_variation_in_cell"
+    } else if (length(unique(d$psu_key)) < 2L) {
+      factor_source <- "less_than_two_psu"
+    } else {
+      design_data <- data.frame(
+        y = y,
+        design_weight = w,
+        design_psu = d$psu_key,
+        design_strata = d$region
+      )
+      design_result <- tryCatch({
+        design <- survey::svydesign(
+          ids = stats::as.formula("~design_psu"),
+          strata = stats::as.formula("~design_strata"),
+          weights = stats::as.formula("~design_weight"),
+          data = design_data,
+          nest = TRUE
+        )
+        mean_obj <- survey::svymean(stats::as.formula("~y"), design)
+        as.numeric(survey::SE(mean_obj))
+      }, error = function(e) NA_real_)
+
+      se_design <- design_result
+      if (is.finite(se_design) && se_design >= 0) {
+        factor_additional <- (se_design / se_kish)^2
+        factor_source <- "cell_specific_psu_region"
+      } else {
+        factor_source <- "survey_estimation_failed"
+      }
+    }
+  }
+
+  data.frame(
+    variable = variable,
+    n = n,
+    weighted_n = weighted_n,
+    n_psu = stats$n_psu,
+    n_strata = stats$n_strata,
+    lonely_strata = stats$lonely_strata,
+    estimate = prevalence_or_mean,
+    neff_kish = neff_kish,
+    se_design = se_design,
+    se_kish = se_kish,
+    factor_additional = factor_additional,
+    factor_source = factor_source,
+    stringsAsFactors = FALSE
+  )
+}
+
+estimate_all_cells <- function(data, variable_specs) {
+  cell_keys <- unique(data[!is.na(data$age_group) & !is.na(data$sex),
+                           c("year", "age_group", "age_group_label", "sex"),
+                           drop = FALSE])
+  cell_keys <- cell_keys[order(cell_keys$year, cell_keys$sex, cell_keys$age_group), ]
+
+  rows <- list()
+  for (i in seq_len(nrow(cell_keys))) {
+    key <- cell_keys[i, , drop = FALSE]
+    cell_data <- data[
+      data$year == key$year &
+        data$age_group == key$age_group &
+        data$sex == key$sex,
+      ,
+      drop = FALSE
+    ]
+
+    for (j in seq_len(nrow(variable_specs))) {
+      v <- variable_specs[j, , drop = FALSE]
+      res <- estimate_cell_factor(cell_data, v$variable, v$column, v$kind)
+      rows[[length(rows) + 1L]] <- cbind(key, res)
+    }
+  }
+
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+add_engine_fallback <- function(cell_factors) {
+  # Strict factor_additional is the own cell-specific estimate. The engine column
+  # fills only cells where strict estimation is impossible, mainly 2020.
+  #
+  # Primary fallback rule:
+  #   use the closest following wave with a validated factor for the same
+  #   variable x age_group x sex cell. For the current data this means that
+  #   2020 borrows 2022 within the same cell.
+  #
+  # Secondary fallback rule:
+  #   if no following validated year exists, use the median validated factor
+  #   for the same variable. This keeps the output usable while making the
+  #   source flag explicit.
+  fallback <- stats::aggregate(
+    factor_additional ~ variable,
+    data = cell_factors[is.finite(cell_factors$factor_additional), , drop = FALSE],
+    FUN = stats::median
+  )
+  names(fallback)[names(fallback) == "factor_additional"] <- "fallback_factor_median_validated_cells"
+  out <- merge(cell_factors, fallback, by = "variable", all.x = TRUE, sort = FALSE)
+
+  out$fallback_next_valid_year <- NA_integer_
+  out$fallback_factor_next_valid_year <- NA_real_
+  missing_strict <- !is.finite(out$factor_additional)
+
+  for (i in which(missing_strict)) {
+    same_cell <- out[
+      out$variable == out$variable[i] &
+        out$age_group == out$age_group[i] &
+        out$sex == out$sex[i] &
+        out$year > out$year[i] &
+        is.finite(out$factor_additional),
+      ,
+      drop = FALSE
+    ]
+
+    if (nrow(same_cell) > 0L) {
+      same_cell <- same_cell[order(same_cell$year), , drop = FALSE]
+      out$fallback_next_valid_year[i] <- same_cell$year[[1L]]
+      out$fallback_factor_next_valid_year[i] <- same_cell$factor_additional[[1L]]
+    }
+  }
+
+  out$factor_for_engine <- out$factor_additional
+  missing_factor <- !is.finite(out$factor_for_engine)
+  has_next_year <- missing_factor & is.finite(out$fallback_factor_next_valid_year)
+  out$factor_for_engine[has_next_year] <- out$fallback_factor_next_valid_year[has_next_year]
+
+  still_missing <- !is.finite(out$factor_for_engine)
+  out$factor_for_engine[still_missing] <- out$fallback_factor_median_validated_cells[still_missing]
+  out$factor_for_engine_source <- ifelse(
+    is.finite(out$factor_additional),
+    "own_cell_specific",
+    ifelse(
+      has_next_year,
+      "fallback_next_valid_year_same_cell",
+      "fallback_median_validated_cells_same_variable"
+    )
+  )
+  out$neff_corr_strict <- out$neff_kish / out$factor_additional
+  out$neff_corr_engine <- out$neff_kish / out$factor_for_engine
+  out
+}
+
+design_table_to_engine_lists <- function(tbl = design_table_cells, neff_default = 1000, factor_default = 1) {
+  # Return objects compatible with aaf_unified.R. The design_factor function
+  # returns a per-question list(abs, form, hed) for each cell. This is what lets
+  # aaf_unified use different clustering factors by year, tramo, sex, and
+  # prevalence variable.
+  key <- paste(tbl$year, tbl$age_group, tbl$sex, tbl$variable, sep = "|")
+  neff_map <- stats::setNames(tbl$neff_kish, key)
+  factor_map <- stats::setNames(tbl$factor_for_engine, key)
+
+  get_value <- function(map, year, group, sex, variable, default) {
+    v <- map[[paste(year, group, sex, variable, sep = "|")]]
+    if (is.null(v) || !is.finite(v)) default else as.numeric(v)
+  }
+
+  neff_fun <- function(year, group, sex) {
+    get_value(neff_map, year, group, sex, "abs", neff_default)
+  }
+  design_factor_fun <- function(year, group, sex) {
+    list(
+      abs = get_value(factor_map, year, group, sex, "abs", factor_default),
+      form = get_value(factor_map, year, group, sex, "form", factor_default),
+      hed = get_value(factor_map, year, group, sex, "hed", factor_default)
+    )
+  }
+  neff_consumption_fun <- function(year, group, sex) {
+    get_value(neff_map, year, group, sex, "consumption", neff_default)
+  }
+  design_factor_consumption_fun <- function(year, group, sex) {
+    get_value(factor_map, year, group, sex, "consumption", factor_default)
+  }
+
+  list(
+    neff = neff_fun,
+    design_factor = design_factor_fun,
+    neff_consumption = neff_consumption_fun,
+    design_factor_consumption = design_factor_consumption_fun
+  )
+}
+
+message("Reading lightweight ENPG design cache.")
+design_cache <- readRDS(cache_path)
+design_lookup <- collapse_design_cache(design_cache)
+
+message("Reading ENPG_BINGE.RDS and joining design variables.")
+enpg_binge <- as.data.frame(readRDS(binge_path))
+enpg_binge$year <- as.integer(enpg_binge$year)
+enpg_binge$id_join <- as.character(enpg_binge$id)
+
+analysis_data <- merge(
+  enpg_binge,
+  design_lookup,
+  by = c("year", "id_join"),
+  all.x = TRUE,
+  sort = FALSE
+)
+if ("region.y" %in% names(analysis_data)) {
+  analysis_data$source_region <- analysis_data$region.x
+  analysis_data$region <- analysis_data$region.y
+}
+
+join_audit <- audit_join(analysis_data)
+
+message("Deriving alcohol variables and age/sex tramos.")
+analysis_data <- derive_alcohol_variables(analysis_data)
+
+variable_specs <- data.frame(
+  variable = c("abs", "form", "hed", "consumption"),
+  column = c("abs", "form", "hed", "consumption"),
+  kind = c("binary", "binary", "binary", "mean"),
+  stringsAsFactors = FALSE
+)
+
+message("Estimating cell-specific PSU + REGION factors where possible.")
+cell_factors_strict <- estimate_all_cells(analysis_data, variable_specs)
+design_table_cells <- add_engine_fallback(cell_factors_strict)
+
+# Keep the compact variable names used by the engine, but add the exact source
+# variable/expression from the exposure-preparation chunk for auditability.
+variable_source_from_chunk <- c(
+  abs = "cvolajms == \"ltabs\"",
+  form = "cvolajms == \"fd\"",
+  hed = "hed; derived as db > 0",
+  consumption = "volajohdiams"
+)
+design_table_cells$variable_source_from_chunk <- unname(
+  variable_source_from_chunk[design_table_cells$variable]
+)
+
+numeric_cols <- vapply(design_table_cells, is.numeric, logical(1))
+design_table_cells[numeric_cols] <- lapply(
+  design_table_cells[numeric_cols],
+  function(x) round(x, 6)
+)
+
+join_audit$match_rate <- round(join_audit$match_rate, 6)
+
+join_audit_path <- file.path(control_dir, "enpg_design_join_audit.csv")
+factor_path <- file.path(control_dir, "enpg_cluster_factors_by_year_variable_tramo.csv")
+engine_path <- file.path(control_dir, "enpg_design_table_cells_extension.csv")
+
+utils::write.csv(join_audit, join_audit_path, row.names = FALSE, fileEncoding = "UTF-8")
+utils::write.csv(design_table_cells, factor_path, row.names = FALSE, fileEncoding = "UTF-8")
+utils::write.csv(design_table_cells, engine_path, row.names = FALSE, fileEncoding = "UTF-8")
+
+message("\nJoin audit:")
+print(join_audit)
+
+# message("\nCell-specific clustering factors (head):")
+# print(utils::head(design_table_cells, 16))
+
+message("\nFactor source counts:")
+print(table(design_table_cells$factor_source, useNA = "ifany"))
+print(table(design_table_cells$factor_for_engine_source, useNA = "ifany"))
+
+message("\nReady for aaf_unified.R:")
+message("  kish <- design_table_to_engine_lists()")
+message("  pass kish$neff, kish$design_factor, kish$neff_consumption,")
+message("  and kish$design_factor_consumption into compute_*_aaf_from_registry().")
+
+elapsed <- as.numeric(difftime(Sys.time(), .t0, units = "mins"))
+message(sprintf("\nElapsed time: %.2f minutes", elapsed))
+message("Wrote: ", join_audit_path)
+message("Wrote: ", factor_path)
+message("Wrote: ", engine_path)

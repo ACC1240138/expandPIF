@@ -6044,3 +6044,115 @@ Pendiente recomendado:
   - revisar si JRT propaga p_form / gamma / RR former igual que nosotros,
   - mantener point estimate desde RDS numerico.
 - No usar la CSV formateada para auditoria fina de diferencias de AAF; usar RDS interno o tablas numericas sin redondear.
+
+## 2026-07-06 13:54:43 -04:00 - ENPG design cache and cell-specific clustering extension
+
+Accion realizada:
+
+- Se separo la construccion del insumo ENPG en un script independiente:
+  - `__andres_control/build_enpg_design_waves_2012_2024_list.R`.
+- Ese script crea un RDS liviano:
+  - `Sex-and-age-differences-in-alcohol-attributable-mortality-in-Chile-between-2008-and-2022-main/Raw data/enpg_design_waves_2012_2024_list.RDS`.
+- El RDS excluye 2008 y 2010.
+- El RDS conserva solo variables necesarias para auditoria de diseno muestral y alcohol:
+  - ID armonizado,
+  - peso,
+  - region/comuna,
+  - PSU cuando esta disponible,
+  - sexo/edad crudos,
+  - variables alcohol-relacionadas usadas para derivar abstencion, ex-bebedor, HED y consumo.
+
+Revision metodologica:
+
+- La extension avanzada queda en:
+  - `__andres_control/revision_diseno_enpg_extension.R`.
+- Esta version ya no depende de un residuo global tomado solo de 2022/2024.
+- Ahora estima, cuando es posible, un factor propio por celda:
+  - `year x tramo x sex x variable`.
+- La celda usa:
+  - PSU como conglomerado,
+  - REGION como estrato comparable entre olas.
+- Variables evaluadas:
+  - `abs`,
+  - `form`,
+  - `hed`,
+  - `consumption`.
+- Tramos usados:
+  - `15-29`,
+  - `30-44`,
+  - `45-59`,
+  - `60-65`.
+
+Resultado verificado:
+
+- Factores propios posibles para:
+  - 2012,
+  - 2014,
+  - 2016,
+  - 2018,
+  - 2022,
+  - 2024.
+- En 2020 no hay PSU validada en el RDS publico disponible; por eso el factor estricto queda como no estimable.
+- Para uso de motor, 2020 recibe fallback explicito marcado como:
+  - `fallback_median_validated_cells_same_variable`.
+- Conteo observado:
+  - 192 celdas con factor propio,
+  - 32 celdas 2020 con fallback.
+
+Outputs generados:
+
+- `__andres_control/enpg_design_join_audit.csv`.
+- `__andres_control/enpg_cluster_factors_by_year_variable_tramo.csv`.
+- `__andres_control/enpg_design_table_cells_extension.csv`.
+
+Notas importantes:
+
+- Algunos factores son menores que 1 porque el calculo es neto:
+  - `(SE_design / SE_Kish_only)^2`.
+- Con estratificacion regional, el diseno puede reducir la varianza respecto del Kish-only en algunas celdas.
+- Si se quiere una regla conservadora, la decision pendiente seria imponer piso 1 al `factor_for_engine`.
+- No se editaron notebooks ni archivos Quarto.
+
+## 2026-07-06 14:09:45 -04:00 - Clarificacion ENPG 2020 PSU
+
+Correccion de matiz:
+
+- No afirmar "ENPG 2020 no tuvo PSU/conglomerados" como hecho de diseno.
+- El PDF publico 2020 describe una muestra entregada por INE basada en seleccion de manzanas y viviendas, por lo que el diseno de campo si parece tener estructura de conglomerados.
+- Lo que esta verificado en los microdatos disponibles es mas estrecho:
+  - `enpg2020.RDS` no expone una variable `UPM`, `PSU`, `manzana`, `segmento`, vivienda u hogar validable.
+  - Solo aparece `seccion`.
+  - `seccion` sola tiene 10 valores; `REGION + Nom_comuna + seccion` genera 408 grupos, pero eso sigue siendo una reconstruccion candidata, no una PSU documentada.
+- Por tanto, en el codigo mantener 2020 como:
+  - sin PSU validada en el microdato publico,
+  - factor estricto no estimable,
+  - fallback explicito para uso del motor.
+- Si aparece un diccionario/metodologia con identificador real de manzana/conglomerado, reabrir 2020 y estimar su factor propio.
+
+## 2026-07-06 14:22:25 -04:00 - Fallback ENPG 2020 changed to next valid wave
+
+Cambio metodologico:
+
+- Para las celdas sin PSU validada, el fallback principal ya no es la mediana global por variable.
+- Ahora el codigo busca el ano posterior validado mas cercano para la misma celda:
+  - `variable x tramo x sex`.
+- En la practica actual, esto significa:
+  - 2020 toma el factor de 2022 dentro de la misma celda.
+
+Implementacion:
+
+- Archivo modificado:
+  - `__andres_control/revision_diseno_enpg_extension.R`.
+- Campos nuevos/actualizados en `enpg_design_table_cells_extension.csv`:
+  - `fallback_next_valid_year`,
+  - `fallback_factor_next_valid_year`,
+  - `factor_for_engine_source`.
+- La mediana por variable queda solo como fallback secundario si no existe ningun ano posterior validado.
+
+Verificacion:
+
+- Corrida completa de `revision_diseno_enpg_extension.R` OK.
+- Conteo de fuentes:
+  - 192 celdas `own_cell_specific`,
+  - 32 celdas `fallback_next_valid_year_same_cell`.
+- Las 32 celdas 2020 usan `fallback_next_valid_year = 2022`.

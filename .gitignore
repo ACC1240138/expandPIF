@@ -34,13 +34,20 @@ desktop.ini
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/DEFUNCIONES_DEIS_12_23_15plus.parquet
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/mortality_dataV2.rds
 
+# Script to compress DEIS CSV to Parquet
+!compress_parquet.R
+
 # Exceeds GitHub's regular 100 MB file limit; keep this data file local.
 ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/DEFUNCIONES_FUENTE_DEIS_1990_2023_CIFRAS_OFICIALES.csv
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/ine_proyecciones.xlsx
-!Sex-and-age-differences-in-alcohol-attributable-mortality-in-Chile-between-2008-and-2022-main/Mortality Estimates.xlsx
+#!Sex-and-age-differences-in-alcohol-attributable-mortality-in-Chile-between-2008-and-2022-main/Mortality Estimates.xlsx
+!Sex-and-age-differences-in-alcohol-attributable-mortality-in-Chile-between-2008-and-2022-main/Raw data/enpg_design_waves_2012_2024_list.RDS
 
 # Generated data reused by the notebook
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/PIF addiction/data_binge_sensitivity.rds
+!__andres_control/enpg_design_join_audit.csv
+!__andres_control/enpg_cluster_factors_by_year_variable_tramo.csv
+!__andres_control/enpg_design_table_cells_extension.csv
 
 # Sourced R helpers and transitive RR inputs
 !__andres_control/revision_diseno_enpg_extension.R
