@@ -30,6 +30,8 @@ desktop.ini
 # Direct notebook data inputs
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/ENPG_BINGE.RDS
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/DEFUNCIONES_FUENTE_DEIS_2024_2026_09062026.csv
+# Converted Parquet generated from the CSV above; track it.
+!ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/DEFUNCIONES_FUENTE_DEIS_2024_2026_09062026.parquet
 # previous mortality data
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/DEFUNCIONES_DEIS_12_23_15plus.parquet
 !ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 26/mortality_dataV2.rds

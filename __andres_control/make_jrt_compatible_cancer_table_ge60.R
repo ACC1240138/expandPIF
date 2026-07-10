@@ -1,4 +1,5 @@
 .t0 <- Sys.time()  # start timer for elapsed-time reporting
+.verbose <- TRUE
 # ------------------------------------------------------------------
 # 1. Resolve script location and project root
 # ------------------------------------------------------------------
@@ -17,18 +18,95 @@ project_root <- if (basename(script_dir) == "__andres_control") {
 } else {
   normalizePath(script_dir, winslash = "/", mustWork = TRUE)
 }
+verbose_message <- function(...) {
+  if (isTRUE(.verbose)) {
+    message(...)
+  }
+}
+elapsed_minutes <- function() {
+  as.numeric(difftime(Sys.time(), .t0, units = "mins"))
+}
+format_file_size <- function(path) {
+  size_bytes <- file.info(path)$size
+  if (is.na(size_bytes)) {
+    return("size unavailable")
+  }
+  paste0(round(size_bytes / 1024^2, 2), " MB")
+}
+format_integer <- function(x) {
+  format(x, big.mark = ",", scientific = FALSE, trim = TRUE)
+}
+verbose_message("Starting JRT-compatible cancer comparison rebuild.")
+verbose_message("Script directory: ", script_dir)
+verbose_message("Project root: ", project_root)
 # ------------------------------------------------------------------
-# 2. Define input/output paths
+# 2. Helper to resolve the newest dated project file
+# ------------------------------------------------------------------
+# Finds files with names like:
+#   aaf_nested_by_disease_20260709.rds
+# and returns the path with the latest YYYYMMDD date embedded in the file name.
+latest_dated_project_file <- function(directory, prefix, extension) {
+  if (!dir.exists(directory)) {
+    stop("Directory does not exist: ", directory)
+  }
+  verbose_message(
+    "Searching for latest dated file in ",
+    directory,
+    " with pattern ",
+    prefix,
+    "YYYYMMDD",
+    extension,
+    "."
+  )
+  escaped_prefix <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", prefix)
+  escaped_extension <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", extension)
+  file_pattern <- paste0("^", escaped_prefix, "([0-9]{8})", escaped_extension, "$")
+  candidate_paths <- list.files(
+    path = directory,
+    pattern = file_pattern,
+    full.names = TRUE
+  )
+  if (length(candidate_paths) == 0L) {
+    stop(
+      "No files matching ",
+      prefix,
+      "YYYYMMDD",
+      extension,
+      " were found in: ",
+      directory
+    )
+  }
+  candidate_names <- basename(candidate_paths)
+  candidate_dates_chr <- sub(file_pattern, "\\1", candidate_names)
+  candidate_dates <- as.Date(candidate_dates_chr, format = "%Y%m%d")
+  if (anyNA(candidate_dates)) {
+    stop(
+      "At least one candidate file has an invalid YYYYMMDD date: ",
+      paste(candidate_names[is.na(candidate_dates)], collapse = "; ")
+    )
+  }
+  selected_index <- which.max(candidate_dates)
+  verbose_message(
+    "Found ",
+    length(candidate_paths),
+    " candidate file(s): ",
+    paste(candidate_names[order(candidate_dates)], collapse = "; ")
+  )
+  verbose_message("Selected latest dated file: ", candidate_names[[selected_index]])
+  candidate_paths[[selected_index]]
+}
+# ------------------------------------------------------------------
+# 3. Define input/output paths
 # ------------------------------------------------------------------
 path_jrt <- file.path(
   project_root,
   "JRT_20260702_cancer",
   "Alcohol Attributable mortality (CANCER).txt"
 )
-path_aaf <- file.path(
-  project_root,
-  "__andres_control",
-  "aaf_nested_by_disease_20260703.rds"
+path_aaf <- latest_dated_project_file(
+  directory = file.path(project_root, "__andres_control"),
+  prefix = "aaf_nested_by_disease_",
+  extension = ".rds"
 )
 path_deis_2012_2023 <- file.path(
   project_root,
@@ -43,16 +121,25 @@ path_deis_2024 <- file.path(
   "DEFUNCIONES_FUENTE_DEIS_2024_2026_09062026.csv"
 )
 out_dir <- file.path(project_root, "JRT_20260702_cancer")
+verbose_message("Input path - JRT cancer table: ", path_jrt)
+verbose_message("Input path - AAF nested bundle: ", path_aaf)
+verbose_message("Input path - DEIS 2012-2023 parquet: ", path_deis_2012_2023)
+verbose_message("Input path - DEIS 2024 CSV: ", path_deis_2024)
+verbose_message("Output directory: ", out_dir)
 # ------------------------------------------------------------------
-# 3. Sanity-check required files
+# 4. Sanity-check required files
 # ------------------------------------------------------------------
 required_files <- c(path_jrt, path_aaf, path_deis_2012_2023, path_deis_2024)
 missing_files <- required_files[!file.exists(required_files)]
 if (length(missing_files) > 0) {
   stop("Missing required file(s): ", paste(missing_files, collapse = "; "))
 }
+verbose_message("All required input files exist.")
+for (path_i in required_files) {
+  verbose_message("  - ", basename(path_i), " (", format_file_size(path_i), ")")
+}
 # ------------------------------------------------------------------
-# 4. Helper functions
+# 5. Helper functions
 # ------------------------------------------------------------------
 # Generate ICD-10 codes at 3-character + suffix level.
 # letter  = leading letter (e.g. "C")
@@ -97,8 +184,9 @@ extract_aaf_unified_table <- function(cancer_tables, table_name, disease_i, sex_
   }))
 }
 # ------------------------------------------------------------------
-# 5. Load JRT reference table (Excel exported as tab-delimited)
+# 6. Load JRT reference table (Excel exported as tab-delimited)
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Reading JRT reference table.")
 ref_cancer <- readr::read_tsv(
   path_jrt,
   locale = readr::locale(decimal_mark = ","),
@@ -108,14 +196,21 @@ ref_cancer <- readr::read_tsv(
 ref_keys <- ref_cancer |>
   dplyr::distinct(Year, disease, sex, age_group)
 target_years <- sort(unique(ref_cancer$Year))
+verbose_message("JRT rows read: ", format_integer(nrow(ref_cancer)))
+verbose_message("Distinct JRT comparison keys: ", format_integer(nrow(ref_keys)))
+verbose_message("Target years: ", paste(target_years, collapse = ", "))
+verbose_message("Cancer diseases in JRT: ", paste(sort(unique(ref_cancer$disease)), collapse = "; "))
 # ------------------------------------------------------------------
-# 6. Read and reshape aaf_unified cancer AAF estimates
+# 7. Read and reshape aaf_unified cancer AAF estimates
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Reading AAF bundle.")
 aaf_unified <- readRDS(path_aaf)
 cancer_tables <- aaf_unified[["family_bundles"]][["cancer"]][["raw_result"]][["tables"]]
 if (is.null(cancer_tables)) {
   stop("Could not find cancer aaf_unified tables in: ", path_aaf)
 }
+verbose_message("Cancer AAF tables available: ", length(cancer_tables))
+verbose_message("Cancer AAF table names: ", paste(names(cancer_tables), collapse = "; "))
 # Map each internal aaf_unified cancer table name to disease label and sex
 aaf_table_map <- data.frame(
   table_name = c(
@@ -160,10 +255,17 @@ aaf_long_can <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i
   )
 })) |>
   dplyr::filter(Year %in% target_years)
+verbose_message("Cancer AAF map rows requested: ", format_integer(nrow(aaf_table_map)))
+verbose_message("Long cancer AAF rows after year filter: ", format_integer(nrow(aaf_long_can)))
+verbose_message(
+  "Long cancer AAF diseases: ",
+  paste(sort(unique(aaf_long_can$disease)), collapse = "; ")
+)
 # ------------------------------------------------------------------
-# 7. Load DEIS mortality data (2012-2023 parquet + 2024 CSV)
+# 8. Load DEIS mortality data (2012-2023 parquet + 2024 CSV)
 # ------------------------------------------------------------------
 # 2026-07-07= Use nanoparquet instead
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Reading DEIS 2012-2023 parquet.")
 deis_2012_2023 <- nanoparquet::read_parquet(path_deis_2012_2023) |>
   dplyr::transmute(
     year = as.integer(year),
@@ -172,7 +274,9 @@ deis_2012_2023 <- nanoparquet::read_parquet(path_deis_2012_2023) |>
     diag1 = as.character(diag1),
     diag2 = as.character(diag2)
   )
+verbose_message("DEIS 2012-2023 rows after column standardization: ", format_integer(nrow(deis_2012_2023)))
 # 2024 file has a different layout; detect the year column by position
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Reading DEIS 2024 CSV.")
 deis_2024_raw <- readr::read_delim(
   path_deis_2024,
   delim = ";",
@@ -180,6 +284,8 @@ deis_2024_raw <- readr::read_delim(
   show_col_types = FALSE
 )
 year_col_2024 <- names(deis_2024_raw)[1]
+verbose_message("DEIS 2024 raw rows: ", format_integer(nrow(deis_2024_raw)))
+verbose_message("DEIS 2024 year column detected by position: ", year_col_2024)
 # Keep only 2024 records with completed age (EDAD_TIPO == 1)
 deis_2024 <- deis_2024_raw |>
   dplyr::transmute(
@@ -192,9 +298,11 @@ deis_2024 <- deis_2024_raw |>
   ) |>
   dplyr::filter(year == 2024, age_type == 1) |>
   dplyr::select(-age_type)
+verbose_message("DEIS 2024 rows after year and completed-age filters: ", format_integer(nrow(deis_2024)))
 # ------------------------------------------------------------------
-# 8. Standardize combined mortality: sex, age group, clean DIAG1
+# 9. Standardize combined mortality: sex, age group, clean DIAG1
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Standardizing combined mortality records.")
 mortality <- dplyr::bind_rows(deis_2012_2023, deis_2024) |>
   dplyr::filter(year %in% target_years, age >= 15) |>
   dplyr::mutate(
@@ -213,8 +321,11 @@ mortality <- dplyr::bind_rows(deis_2012_2023, deis_2024) |>
     DIAG1_s6 = clean_icd10(diag1)
   ) |>
   dplyr::filter(!is.na(sex), !is.na(age_group))
+verbose_message("Combined mortality rows after filters: ", format_integer(nrow(mortality)))
+verbose_message("Mortality years retained: ", paste(sort(unique(mortality$year)), collapse = ", "))
+verbose_message("Mortality age groups retained: ", paste(sort(unique(mortality$age_group)), collapse = ", "))
 # ------------------------------------------------------------------
-# 9. Map ICD-10 codes to cancer disease categories
+# 10. Map ICD-10 codes to cancer disease categories
 # ------------------------------------------------------------------
 cancer_code_map <- list(
   "Breast Cancer" = icd_codes_s6("C", 50),
@@ -230,6 +341,8 @@ cancer_code_map <- list(
   "Stomach Cancer" = icd_codes_s6("C", 16)
 )
 # Count deaths by Year/disease/sex/age_group for each cancer category
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Counting deaths by cancer category.")
+verbose_message("Cancer ICD-10 category count: ", length(cancer_code_map))
 mortality_counts <- dplyr::bind_rows(lapply(names(cancer_code_map), function(disease_i) {
   mortality |>
     dplyr::filter(DIAG1_s6 %in% cancer_code_map[[disease_i]]) |>
@@ -241,9 +354,12 @@ mortality_counts <- dplyr::bind_rows(lapply(names(cancer_code_map), function(dis
       name = "muertes"
     )
 }))
+verbose_message("Mortality count rows: ", format_integer(nrow(mortality_counts)))
+verbose_message("Total cancer deaths counted across mapped categories: ", format_integer(sum(mortality_counts$muertes)))
 # ------------------------------------------------------------------
-# 10. Build pipeline cancer alcohol-attributable mortality estimates
+# 11. Build pipeline cancer alcohol-attributable mortality estimates
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Joining JRT keys, AAF values, and mortality counts.")
 pipeline_cancer <- ref_keys |>
   dplyr::left_join(
     aaf_long_can,
@@ -264,6 +380,10 @@ pipeline_cancer <- ref_keys |>
     Year, disease, sex, age_group, AAF, LL, UL, muertes,
     att_mort, att_mort_low, att_mort_up
   )
+verbose_message("Pipeline cancer rows: ", format_integer(nrow(pipeline_cancer)))
+verbose_message("Pipeline cancer rows with zero mortality counts: ", format_integer(sum(pipeline_cancer$muertes == 0L)))
+verbose_message("Pipeline cancer total deaths: ", format_integer(sum(pipeline_cancer$muertes)))
+verbose_message("Pipeline cancer total attributable deaths: ", format_integer(sum(pipeline_cancer$att_mort, na.rm = TRUE)))
 # Stop if any AAF/CI values are missing after the join
 if (anyNA(pipeline_cancer[c("AAF", "LL", "UL")])) {
   missing_aaf <- pipeline_cancer |>
@@ -271,13 +391,16 @@ if (anyNA(pipeline_cancer[c("AAF", "LL", "UL")])) {
     dplyr::select(Year, disease, sex, age_group)
   stop("Missing aaf_unified values after join: ", utils::capture.output(print(missing_aaf)))
 }
+verbose_message("AAF, LL, and UL columns have no missing values after join.")
 # 2026-07-02= I did not include the 60+ age group in the original JRT table, 
 # but I will include it here for comparison.
 pipeline_cancer_60plus <- pipeline_cancer |>
   dplyr::filter(age_group == "60+")
+verbose_message("Pipeline cancer 60+ rows: ", format_integer(nrow(pipeline_cancer_60plus)))
 # ------------------------------------------------------------------
-# 11. Compare pipeline estimates against JRT reference
+# 12. Compare pipeline estimates against JRT reference
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Comparing pipeline estimates against JRT reference.")
 cancer_compare_comparable <- pipeline_cancer |>
   dplyr::full_join(
     ref_cancer,
@@ -293,9 +416,12 @@ cancer_compare_comparable <- pipeline_cancer |>
 
 cancer_compare_60plus <- cancer_compare_comparable |>
   dplyr::filter(age_group == "60+")
+verbose_message("All-age comparison rows: ", format_integer(nrow(cancer_compare_comparable)))
+verbose_message("60+ comparison rows: ", format_integer(nrow(cancer_compare_60plus)))
 # ------------------------------------------------------------------
-# 12. Write outputs
+# 13. Write outputs
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Writing output tables.")
 readr::write_tsv(
   pipeline_cancer,
   file.path(out_dir, "pipeline_cancer_aam_jrt_compatible_all_ages.txt")
@@ -312,9 +438,14 @@ readr::write_csv(
   cancer_compare_60plus,
   file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv")
 )
+verbose_message("Wrote: ", file.path(out_dir, "pipeline_cancer_aam_jrt_compatible_all_ages.txt"))
+verbose_message("Wrote: ", file.path(out_dir, "pipeline_cancer_aam_jrt_compatible_60plus.txt"))
+verbose_message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_all_ages.csv"))
+verbose_message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv"))
 # ------------------------------------------------------------------
-# 13. Validation checks
+# 14. Validation checks
 # ------------------------------------------------------------------
+verbose_message("[", sprintf("%.2f", elapsed_minutes()), " min] Running validation checks.")
 if (nrow(pipeline_cancer) != 420L) {
   stop("Unexpected all-age row count: ", nrow(pipeline_cancer))
 }
@@ -327,15 +458,14 @@ if (nrow(cancer_compare_comparable) != 420L) {
 if (nrow(cancer_compare_60plus) != 105L) {
   stop("Unexpected 60+ comparison row count: ", nrow(cancer_compare_60plus))
 }
+verbose_message("Validation checks passed.")
 # ------------------------------------------------------------------
-# 14. Summary messages and elapsed time
+# 15. Summary messages and elapsed time
 # ------------------------------------------------------------------
 max_abs_diff_muertes <- max(abs(cancer_compare_comparable$diff_muertes), na.rm = TRUE)
-message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_all_ages.csv"))
-message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv"))
-message("Rows: ", nrow(cancer_compare_comparable))
+message("Final comparison rows: ", nrow(cancer_compare_comparable))
 message("Max abs mortality-count difference: ", max_abs_diff_muertes)
 message(sprintf(
   "[%.2f min] Rebuilt JRT-compatible cancer comparison.",
-  as.numeric(difftime(Sys.time(), .t0, units = "mins"))
+  elapsed_minutes()
 ))
