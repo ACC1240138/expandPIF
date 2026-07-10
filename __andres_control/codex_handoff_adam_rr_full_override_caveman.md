@@ -6240,3 +6240,157 @@ Fix propuesto (NO aplicado todavia, pendiente de que el user confirme):
 2. Defensa adicional: cambiar la celda del notebook que lo sourcea a `source(..., local = TRUE)`, para que ninguna asignacion suelta de ese script (o de otros sourceados igual) pueda volver a filtrarse a `.GlobalEnv`. Esto SI es un notebook edit -> requiere permiso explicito segun `AGENTS.md`.
 
 Estado al cierre: solo diagnostico (lectura de codigo + grep), nada ejecutado en R, nada editado en `expand_pif.ipynb` ni en el `.R`. Pendiente explicito: aplicar fix 1 y/o 2 cuando el user de luz verde, y re-correr el pipeline completo para confirmar que `aaf_long` mantiene las 23 causas hasta el final del notebook.
+
+---
+
+## 2026-07-10 12:55 - Claude: PIF completado y congruente con el PAF (expand_pif2.ipynb)
+
+CONTEXTO: expand_pif2.ipynb tenia el PIF DORMIDO: solo 3 registries (ihd/is/injuries) hard-coded en pif2_rr_registries, un solo wrapper HED-aware, y ningun compute_*_pif. El PAF (expand_pif.ipynb, bundle aaf_nested_by_disease_20260709) cubre 23 enfermedades / 45 tablas con motor aaf_unified.R.
+
+QUE SE HIZO (todo validado con datos reales, no solo unit tests):
+
+1. MOTOR (aaf_unified.R, unico .R editado y versionado; +47/-13):
+   - Agregado scenario="both" (combinado volumen+HED) ADITIVO a .pif_core/pif_point/pif_confint, con shift_hed. Es un SUPERCONJUNTO exacto: both(shift_hed=1)==volume; both(vol shift=1)==hed; both(1,1)==0. Probado punto (1e-9) y MC (serial==paralelo bit a bit).
+   - aaf_* (PAF) INTACTO. test_aaf_unified.R pasa 100% ("TODOS LOS TESTS PASARON") -> sin regresion.
+
+2. NOTEBOOK expand_pif2.ipynb (gitignored, edicion local con permiso explicito del user):
+   - pif2_rr_registries: EXPANDIDO de 3 a los 6 scopes (cancer/hhd/general/ihd/is/injuries) + validate_adam_rr_registry por scope. 23 enfermedades, 45 tablas de salida.
+   - pif2_output_spec: DERIVADO de nb$audits$aaf_adam_rr_audit (las 45 tablas que produjo el PAF, con hed_mode none/cap/explicit y fd_uncertainty) -> congruencia por construccion.
+   - Reusa VERBATIM del bundle: gammas PONDERADAS (fit_gamma_weighted), closures de diseno (neff/design_factor = Kish n / factor cluster, function(year,group,sex)), n_sim/seed. Diseno aplicado UNA vez (neff_eff=neff_kish/factor_additional == tbl$neff_corr_engine; NO al cuadrado).
+   - Escenarios declarativos (10): baseline + volume 10/20/30 + hed 10/25/50 + combined x3. Aplicabilidad por RR: HED/combined NO aplican a causas volume-only (NA + razon machine-readable, no cero espurio).
+   - Salidas: pif2_pif_results (long) + pif2_pif_audit (disease x scenario) + bridge YPLL evitable. Se guardan como pif2_pif_results_<mode>_<fecha>.rds.
+   - Modos: "demo" (ultima ola, n_sim=1000) por defecto para render; "full" (todas las olas, n_sim=10000) para produccion.
+
+3. VALIDACION Phase 7 (17/17 en el notebook; 21/21 en script standalone): identidad baseline=0, aplicabilidad HED/FD, shift mapping (bug encontrado y corregido: engine lee la fraccion HED de `shift`, no `shift_hed`, en scenario="hed"), diseno-una-vez, recuperacion de covarianza (mvrnorm), reproducibilidad por seed, PIF<=1 con negativos RETENIDOS (no clip), cobertura 45/45, CONGRUENCIA PAF (mi aaf_confint reproduce el PAF guardado: liver male 2022 g2 = 0.3077 = 0.3077), aislamiento de escenarios, monotonia solo donde el RR lo implica.
+
+NOTA DE PROCESO: el .ipynb se desordeno por IDs inestables en NotebookEdit (celdas duplicadas/perdidas); se reconstruyo determinísticamente con un script (jsonlite) al orden correcto de 28 celdas y se corrigio nbformat (execution_count). Backup del estado desordenado en scratchpad.
+
+PENDIENTE / DECISIONES ABIERTAS: correr modo "full" (todas las olas, n_sim=10000) es ~horas; el default es demo. No hay escenario FD-reduction (no fabricado; injuries tiene RR_FD=1). deaths/mortalidad se atan aguas abajo (bridge YPLL ya conecta).
+
+---
+
+## 2026-07-10 13:24 - Claude: PIF de IHD/IS con RR de Table 5 (PUC) agregado a expand_pif2.ipynb
+
+PEDIDO: agregar los PIF de Ischaemic Heart Disease e Ischaemic Stroke usando los RR de Table 5 (estudio PUC), ademas de los WHO/Adam.
+
+HALLAZGO DE ESTADO: expand_pif2.ipynb fue REORGANIZADO externamente (codex/Positron) entre turnos -> API nueva y mas pulida (celdas pif2-provenance-and-age-support, pif2-weighted-gamma-rebuild [reconstruye gammas ponderadas desde ENPG_BINGE.RDS], pif2-survey-design-contract [pif2_uncertainty_contract con neff/design closures], pif2-model-registry-validation, pif2-scenario-registry [14 escenarios: baseline, volume/hed 10/20/30, combined 10/20/30, volume_zero, hed_zero, abstention_not_supported, fd_not_defined], pif2-run-all-disease-grid [pif2_run_one_model_cell -> pif2_engine_call -> pif2_lookup_record/resolve/build_engine_args -> pif_confint; cap_upper=FALSE; cell_seed=seed+task_id], pif2-impact-products, pif2-validation-and-save). Mi seccion Table 5 previa (basada en mi API vieja pif2_run_pif_grid) era INCOMPATIBLE -> descartada y reescrita contra la API actual.
+
+QUE SE HIZO (2 celdas nuevas antes de Session info; el .ipynb es gitignored):
+- pif2-table5-registries: define las 4 curvas RR de Table 5 (byte-identicas a aaf_table5_ihd_is_experiment.R): ihd_male=exp(B1*x^.5+B2*x^3), ihd_female=exp(B1*x+B2*x*ln x), is_male=exp(B1*x^.5+B2*x^.5*ln x), is_female=exp(B1*x^.5+B2*x). covBeta DIAGONAL (se_b1^2,se_b2^2). rr_former via CI lognormal. NO age-banded (misma RR en las 3 bandas). 'fact' (1/3,1/20,1,1) GUARDADO pero NO aplicado como x-scale (misma decision que el experimento AAF). table5_make_registry -> 6 records/scope. Define pif2_run_table5_cv().
+- pif2-table5-run: corre pif2_run_table5_cv() -> pif2_pif_results_table5; comparacion WHO vs Table 5; mini-harness 6/6.
+
+INTEGRACION (clave, no invasiva): pif2_run_table5_cv() REUSA el pipeline propio del notebook (pif2_run_one_model_cell) haciendo un SWAP TEMPORAL de pif2_rr_registries[["ihd"]]/[["ischaemic_stroke"]] -> registries Table 5, con on.exit restore. Reconstruye el mismo task grid y usa el MISMO cell_seed que la grilla WHO (numeros aleatorios comunes -> comparable). Resultado en el MISMO schema que pif2_pif_results_raw, tag rr_source="table5_puc". Los resultados WHO (pif2_pif_results_raw) NO se tocan.
+
+VALIDACION end-to-end (perfil smoke, corrio TODO el notebook incl. rebuild de exposicion desde ENPG_BINGE.RDS): 0 celdas con error; 6/6 checks Table 5 (identidad baseline/zero=0, 4 tablas CV, hed+combined computados, finito y PIF<=1, reproducible por seed, CONGRUENCIA PAF EXACTA: aaf_confint directo 0.18473 == compute_cv 0.18473). Comparacion WHO vs Table 5 OK (56 filas smoke): Table 5 da PIF de punto MAS ALTOS en IHD female volume/combined; CIs superiores MUY anchos (0.83/0.97/0.99) por la J-curve cardioprotectora + cap binge + Dirichlet (esperado, no bug). PIF negativos RETENIDOS (cardioproteccion; en smoke group1 los puntos salen positivos pero los pif_low son negativos).
+
+DEFAULT: el notebook corre perfil "audit_full" (todas las olas, groups 1:4, n_sim=200); la seccion Table 5 hereda ese perfil (serial, ~112 celdas CV, rapido). fact NO aplicado (documentado). Guarda pif2_pif_results_table5_<perfil>_<fecha>.rds.
+
+OJO: la reorganizacion del notebook fue externa; verificar con el user que la API pif2_* actual es la deseada antes de construir mas encima.
+
+---
+
+## 2026-07-10 13:37 - Claude: RECUPERADA mi version de expand_pif2.ipynb (el user pidio revertir la reorg de codex)
+
+DECISION DEL USER: "recover what you did, you were in the right path, codex is wrong porque todavia esta tratando de entender el contexto". -> Revertida la reorganizacion externa de codex; restaurada MI implementacion + Table 5 en MI estilo.
+
+QUE ES "MI VERSION" (32 celdas): reusa los bundles guardados (aaf_engine_inputs_bundle_20260709 + aaf_nested_by_disease_20260709), NO reconstruye exposicion desde microdata. API: pif2_output_spec (derivado del audit del PAF, 45 tablas/23 enfermedades), pif2_lookup_record(spec_row, group) [usa spec_row$registry_scope -> soporta scopes arbitrarios, NO hardcodea ihd/is], pif2_scenario_grid (10 escenarios: baseline+volume10/20/30+hed10/25/50+combined x3), pif2_resolve_cell_inputs(spec,record,year,group,exposure), pif2_build_pif_args, pif2_run_pif_grid (orquestador), pif2_pif_results + pif2_pif_audit, bridge YPLL, harness Phase 7 (17/17). Motor aaf_unified.R con scenario="both" (intacto).
+
+TABLE 5 (mi estilo, celdas pif2-table5-registries/run al final): agrega scopes pif2_rr_registries$table5_ihd/$table5_is + pif2_table5_output_spec (registry_scope="table5_ihd"/"table5_is", mode cap). Como MI pif2_lookup_record usa spec_row$registry_scope, NO necesita swap (mas limpio que la version codex). pif2_run_pif_grid(pif2_table5_output_spec, ...) -> pif2_pif_results_table5 + comparacion WHO-vs-Table5 + mini-harness.
+
+VALIDACION e2e (config demo reducida 2022/groups1:2): 17/17 harness principal; Table 5 6/6 (identidad, 4 tablas CV, hed+combined, bounds, numerico, CONGRUENCIA PAF exacta 0.18473==0.18473). Comparacion WHO vs Table 5: Table 5 da PIF de punto mas altos en IHD female; CIs superiores anchos (J-curve). RR de Table 5 byte-identicas a aaf_table5_ihd_is_experiment.R; 'fact' guardado NO aplicado.
+
+BACKUPS en scratchpad de la sesion: expand_pif2_codex_version_backup.ipynb (la reorg de codex por si se necesita), expand_pif2_scrambled_backup.ipynb (fuente de la reconstruccion). Reconstruccion determinista: assemble_notebook.R (lee scrambled, arma las 28 celdas correctas + fix execution_count) + insert_table5_cells.R.
+
+NOTA sobre codex: su reorg SI tenia una mejora metodologica (reconstruir gammas ponderadas desde ENPG_BINGE.RDS con soporte de edad verificado, excluyendo edad 65). Mi version reusa el bundle tal cual (grupo 4 = 60-65 segun se construyo). Si se quiere el fix de edad-65, es un cambio aparte a evaluar; el user prefirio mi ruta por ahora.
+
+---
+
+## 2026-07-10 15:16 - Claude: SCOPING inclusion de edad 65 en MORTALIDAD (12-65 = frame ENPG). Inventario completo de cambios en expand_pif.ipynb + deps
+
+PEDIDO: docs metodologicos ENPG 2020 dicen que la encuesta cubre 12-65. La EXPOSICION ya es 60-65 (`between(edad,60,65)~4`), pero la MORTALIDAD estaba en <65 (grupo4 = 60-64). Pregunta: en vez de EXCLUIR 65 de exposicion (ruta codex), INCLUIR 65 en mortalidad para alinear ambos a 60-65. Explorar QUE hay que cambiar (NO se edito nada; solo scoping).
+
+HALLAZGO CLAVE #1 - YA EMPEZASTE EL CAMBIO HOY (2026-07-10):
+- CELL `mortality-consolidate-and-update`: mort21 (`filter(age <=65)`) Y mort24 (`filter(edad_cant <=65)`) YA capean a <=65. Comentarios: "2026-06-30= <65", "2026-07-10= <=65", "2026-07-02= 15-65 just like SENDA ENPG". age_group top band = `age >= 60 ~ 4` -> con el cap <=65 da 60-65. => MUERTES grupo4 = 60-65 YA HECHO.
+- `def` (denominador AAF, cell step0) deriva de `mort` (`def <- mort`), reaplica `age>=60~4` sin cap propio -> hereda 60-65. OK.
+- Tablas de DISENO ENPG (enpg_design_table_cells_extension.csv / cluster factors): age_group_label grupo4 = "60-65" YA. Exposicion+diseno TODO en 60-65.
+
+HALLAZGO CLAVE #2 - LOS PARQUETS NO ESTAN RESTRINGIDOS A 15-64 (tu sospecha era incorrecta):
+- DEFUNCIONES_DEIS_12_23_15plus.parquet: edad 15-126 (tope ABIERTO). Trae 21,591 muertes de edad==65 (2012-23). Su columna age_group pre-computada = grupo4 es 60+ UNBOUNDED, pero el notebook NO la usa (recomputa desde `age` crudo).
+- Poblacion (Excel sheet_hombres/mujeres): edades hasta "100+". La edad 65 EXISTE en la fuente.
+- => NINGUN parquet/insumo hay que regenerar. TODA la restriccion es a nivel de FILTROS en codigo. Buena noticia: cambio barato.
+
+HALLAZGO CLAVE #3 - EL ESTADO ACTUAL ES INTERNAMENTE INCONSISTENTE (bug vivo introducido por el edit parcial de hoy):
+- MUERTES grupo4 = 60-65 (ya), PERO POBLACION ESTANDAR grupo4 = 60-64 (sin tocar). Cell `mort-trends-age-sex-chile16-std-pop`: `prep_pop_age()` tiene `filter(edad <65)` ("2026-07-02= Exclude population >=65"). => tasa estandarizada = muertes(60-65)/poblacion(60-64) -> INFLA grupo4. ESTE es el fix #1 mas importante.
+
+INVENTARIO DE SITIOS A CAMBIAR (para dejar 60-65 consistente en TODO):
+YA en 65 (muertes): filtros mort21/mort24 (<=65) + top band age>=60~4. [hecho]
+FALTA cambiar:
+1. POBLACION denom: `filter(edad <65)` -> `<=65` en prep_pop_age (chile16-std-pop). CRITICO (afecta TODAS las tasas std).
+2. PESO WHO World grupo4: `4L, 3.72/100  # 60-64 only`. WHO seg std viene en bandas 5-anios (60-64=3.72, 65-69 aparte); edad 65 sola pertenece a 65-69 -> meter 65 al grupo4 es AWKWARD para el estandar WHO (habria que sumar ~1/5 del peso 65-69). Pesos Chile-2018 (std_chile2018_*) se derivan del mismo pop filtrado <65 -> mismo fix que #1.
+3. RR age-band / age_scope (aaf_unified.R): calls IHD/IS pasan `age_scope="15_64"` (lineas ~8275/8276 + Table5 45713/45722/45770/45782-89). `aaf_age_band_mapping("15_64")` mapea grupo4 -> banda Adam "35-64". OJO METODOLOGICO: una persona de 65 exacta pertenece a la banda Adam "65+", NO a "35-64". Hoy el grupo4 (60-65) se pliega entero a 35-64 (aproximacion pre-existente, ya se hacia con 60-64). Renombrar "15_64"->"15_65" es SOLO ETIQUETA/traza; el mapeo (grupo4->35-64) NO deberia cambiar (la mayoria del grupo es 60-64; Adam solo tiene 15-34/35-64/65+). Recomendacion: agregar un scope "15_65" identico en mapeo a "15_64" pero nombrado para reflejar el soporte real 60-65, y documentar la aproximacion del slice edad-65. Solo afecta causas age-banded (IHD/IS). Cancer/injuries/Table5 NO son age-banded -> sin efecto RR.
+4. RELABELS "60-64" (Table5 step3 formatting, cell `table5-ihd-is-aaf-step3-pre-dgs-formatting`, lineas ~45918/45992/46008): `case_when(...age_group==4~"60-64")`. RIESGO DE BUG: si el join espera "60-65" estos generan NA silencioso. La linea 45993 comentada YA tiene el hook `"60-65"`. Cambiar a "60-65".
+5. Etiquetas DISPLAY "60+" (cosmeticas): std-pop labeller (age_group_lbl grupo4="60+"), y ggplots (Women/Men 60+, as_labeller "4"="60+"). Pasar a "60-65".
+6. COMENTARIOS/markdown obsoletos: legend linea ~8202 dice `age_scope="15_65" grupo4=60-65` pero el codigo pasa "15_64" (contradiccion viva); markdown ~8643 y ~45859 afirman "60-64"/"15_64 matching exposure" -> ya falso. Actualizar.
+
+CELL `table5-ihd-is-aaf-step2-same-engine`: pasa age_scope="15_64". Table5 RR NO es age-banded (misma RR en las 3 bandas 15-34/35-64/65+) -> extender grupo4 a 60-65 NO cambia la RR de Table5; solo importa el label "15_64" y los relabels "60-64" del step3 (#4). `table5_wide_to_standard`/`standard_to_long` hardcodean `for (ag in 1:4)` (grupo4 incluido, OK).
+
+make_jrt_compatible_cancer_table_ge60.R (SEPARADO, diagnostico JRT): usa muertes `age >= 60 ~ "60+"` UNBOUNDED (todas 60-126) a proposito, para reproducir la tabla publicada JRT que es 60+. NO es el pipeline principal. Ya pareaba 60+ (incl 80 anios) con un AAF estimado de exposicion 60-65 (match flojo pre-existente). DECISION: NO capear a 65 (romperia la comparacion con JRT que es 60+). Dejar 60+ pero DOCUMENTAR la divergencia (pipeline principal=60-65, este diagnostico=60+).
+
+CAVEAT metodologico (asimetria 65): en DEIS la edad 65 es edad COMPLETA exacta (tope real 126). En ENPG el 65 es probable TOP-CODE "65+" (max=65, spike 5051 vs ~3000 en 64). => exposicion-65 puede incluir gente >65; muertes-65 son exactamente 65. Menor, pero real. Ademas la mortalidad SUBE fuerte pasando 65, asi que donde cortas pesa mas en muertes que en exposicion.
+
+RECOMENDACION: incluir-65 (frame nominal ENPG 12-65) es defendible y mas limpio que excluir-65 (ruta codex), PORQUE la exposicion+diseno YA estan en 60-65 y no habria que reconstruir el bundle. Las DOS rutas (incluir-65 en todo / excluir-65 en todo) son internamente consistentes; el estado ACTUAL (muertes 65, pop 64) es la UNICA opcion mala. Elegir una y aplicarla consistente. Si se elige incluir-65: prioridad #1 = arreglar `filter(edad<65)`->`<=65` en la poblacion estandar (sino las tasas std quedan sesgadas). NO se edito nada aun; esperando confirmacion del user.
+
+---
+
+## 2026-07-10 15:51 - Claude: IMPLEMENTADO inclusion de edad 65 (60-65 consistente) en expand_pif.ipynb + aaf_unified.R. Cambios #1-#6 + tests
+
+DECISIONES CONFIRMADAS POR EL USER (verificadas en terminos simples antes de editar):
+1. Incluir 65 en TODO el pipeline (grupo4 = 60-65 consistente: muertes + poblacion + labels).
+2. RR de IHD/IS: el grupo 60-65 usa la curva Adam "35-64" (NO se separa el 65 a la banda "65+"; aproximacion, mayoria 60-64).
+3. Peso WHO-World grupo4: se MANTIENE 3.72 (60-64) + se documenta (WHO segi usa bandas 5-anios, no hay peso de 65 solo). Chile-2018 (default activo) se auto-recalcula.
+4. Label display grupo4 -> "60-65".
+RESTRICCION: GENERAL_*.R NO se tocan (RRs de WHO25, meta-analisis originales). NINGUN GENERAL_* fue editado.
+
+MECANICA DE EDICION (segura, sin corromper el .ipynb de 2.8MB que el user tiene abierto): backup previo en scratchpad; edicion por reemplazo de substrings ASCII sobre el blob RAW (readBin->rawToChar->gsub fixed=TRUE->writeBin), con check de round-trip byte-a-byte ANTES de tocar, y asserts de conteo por patron (aborta si algun conteo no calza; abortó 1 vez cuando "4"="60+" resulto 8 no 6 -> corregido a 8). Solo se tocaron celdas de CODIGO; las celdas de OUTPUT HTML (con <td>60-64</td> etc.) se dejaron intactas (se regeneran al re-correr).
+
+CAMBIOS APLICADOS:
+- aaf_unified.R (motor, unico .R versionado): aaf_age_band_mapping() gana scope "15_65" (match.arg c("15_64","15_65","15_plus")). Mapeo grupo4->"35-64" IDENTICO a "15_64" (cero efecto numerico; solo documenta el soporte real 60-65). "15_plus" (legacy 65+) intacto.
+- expand_pif.ipynb (gitignored):
+  * #1 Poblacion estandar: filter(edad <=65) YA estaba (lo hizo el user hoy); limpie los 2 comentarios (07-02 stale "Exclude >=65" -> marcado superseded; 07-10 -> "Include age 65: grupo4=60-65...").
+  * #2 Peso WHO grupo4: valor 3.72/100 SIN CAMBIO; comentario actualizado documentando la aproximacion 60-64 y que Chile-2018 auto-incluye 65.
+  * #3 age_scope: las 2 llamadas del pipeline PRINCIPAL (adam_ihd_aaf/adam_is_aaf, ancla triple-paren) "15_64"->"15_65". El modulo Table 5 (sensibilidad, self-contained con by_age_scope[["15_64"]] hardcodeado) MANTIENE su label interno "15_64" a proposito (identico numericamente; cambiar sus keys rompia el acceso interno para cero ganancia) -> solo se actualizo su markdown descriptivo.
+  * #4 Relabels Table5 step3: los 3 age_group==4~"60-64" -> "60-65" (def_cv + adam_aaf_long + table5_aaf_long, juntos -> joins consistentes, sin NA).
+  * #5 Display -> "60-65": vector de labels "Men/Women 60-64" (L17124/25), headers wide-table `Women/Men 60+` (L14511/13, check.names=FALSE, posicional -> display puro), labeller std-pop `4`="60+" (L17674, value; el key "4" no cambia), 8 facet labels ggplot "4"="60+" (facet_wrap as_labeller + scale labels), y el print diagnostico "60-64 yrs".
+  * #6 Comentarios/markdown: los stale de std-pop y WHO (arriba), y el markdown de Table5 ("active age scope 15_64" -> aclara 15_65 principal / 15_64 interno identico). OJO: L8202 (comentario) y L8643 (markdown) YA decian "15_65"/"60-65" (los habia dejado el user) -> el codigo #3 ahora calza con esos docs.
+  * NO tocado a proposito: make_jrt_compatible_cancer_table_ge60.R usa muertes 60+ UNBOUNDED (age>=60) para reproducir la tabla JRT publicada (60+); es un diagnostico SEPARADO, capearlo romperia la comparacion. Documentado.
+
+VALIDACION (tests corridos, datos reales):
+- Motor: test targeted 15_65==15_64 (grupo4->35-64), difiere de 15_plus, default+bad-scope OK. Suite completa test_aaf_unified.R = "TODOS LOS TESTS PASARON" (sin regresion; serial==paralelo bit a bit).
+- Notebook estructura: cells 109==109 (paridad vs backup), secuencia de cell_type IDENTICA, execution_count IDENTICA, outputs-length IDENTICA -> byte-preservado salvo mis edits. JSON parsea (nbformat 4.5, 66 code cells).
+- Sintaxis: TODAS las code cells parsean como R valido; 0 fallos nuevos vs backup (mis edits no rompieron comillas/sintaxis).
+- Consistencia numerador/denominador (el fix central): poblacion grupo4 2018 OLD(<65)=935,437 (60-64) -> NEW(<=65)=1,099,314 (60-65), +163,877 (+17.5%, el slice de 65). Muertes 2012-23: 60-64=94,712, edad65=21,591. Ahora AMBOS lados = 60-65. El estado interino (muertes 60-65 / pop 60-64) sobre-estimaba la tasa cruda de grupo4 ~17-22%; corregido.
+
+PENDIENTE / HONESTIDAD: el notebook NO se re-ejecuto end-to-end (el MC de AAF/PIF es pesado, minutos-horas). Los tests unitarios/estructurales/de-datos pasan, pero los NUMEROS finales (AAFs, tasas std, PIFs, tablas) requieren re-correr el notebook. Al re-correr: el peso WHO-World grupo4 sigue en 3.72 (aproximacion documentada); Chile-2018 (default) ya refleja 60-65. Backup: scratchpad/expand_pif_BACKUP_pre_age65_*.ipynb.
+
+---
+
+## 2026-07-10 17:36 - Claude: HALLAZGO - el PIF (expand_pif2.ipynb) NO incluye las causas wholly-attributable (AAF=1)
+
+PREGUNTA DEL USER: al calcular el PIF, se incluyen las causas con AAF=1?
+
+RESPUESTA: NO. El PIF cubre SOLO las 23 enfermedades RR-based (parcialmente atribuibles). Las causas wholly-attributable (100% alcohol, AAF=1 por definicion) NO estan en el PIF.
+
+VERIFICADO 3 FORMAS (inspeccion directa de expand_pif2.ipynb, 32 celdas, MI version):
+1. pif2_output_spec se DERIVA de pif2_aaf_audit = nb$audits$aaf_adam_rr_audit (45 tablas, 23 enfermedades, TODAS RR-based). Las 23: cancers (breast/colorectal/larynx/liver/oesophagus/oral+other-pharyngeal/pancreatic/stomach), Ischaemic Heart Disease, Ischaemic Stroke, Intracerebral Haemorrhage, Hypertensive Heart Disease, Liver Cirrhosis, Acute Pancreatitis, Epilepsy, DM2, HIV, Tuberculosis, Lower Respiratory Infection, Road/Unintentional/Intentional Injuries. Modos: none=35, cap=4, explicit=6.
+2. aaf_long (cell 14 pif2-aaf-long-from-bundle) se arma SOLO desde nested_bundle$family_bundles (las 6 familias RR: cancer/hhd/general/ihd/is/injuries). El bloque AAF=1 NO esta en family_bundles.
+3. NO hay manejo de AAF=1 en NINGUNA celda del PIF (el unico hit "fully" en cell 20 es un comentario "fully-resolved cells", no AAF=1).
+
+ASIMETRIA CON EL PAF: el PAF (expand_pif.ipynb) SI las incluye. Construye un bloque fully_attr (AAF=1 por fiat, cell chile11 ~L7005-7006 "100% attributable causes including I42.6, F10, X45...") y lo BINDEA a mortality_results (L14807: bind_rows(mortality_results, fully_attr)). El PAF documenta el split explicitamente (L7022/L7082: "does NOT assign the wholly (100%) alcohol-attributable causes, whose AAF is 1 by definition and is not obtained from an RR curve"). => El PIF cubre un SUBCONJUNTO ESTRICTO de las causas del PAF.
+
+CAUSAS AAF=1 EXCLUIDAS DEL PIF (las del bloque fully_attr): F10 (trastornos mentales/conductuales por alcohol), G312/G621/G721 (degeneracion SN / polineuropatia / miopatia alcoholica), I426 (miocardiopatia alcoholica), K860 (pancreatitis cronica alcoholica), K292 (gastritis alcoholica), Q860 (sindrome alcoholico fetal), X45 (+X65 auto-envenenamiento, Y15 intencion indeterminada) envenenamiento por alcohol. OJO: la cirrosis (K70+K74) NO es AAF=1 aqui; se trata como "Liver Cirrhosis" RR-based (parcialmente atribuible) y SI esta en el PIF.
+
+POR QUE (estructural): el motor PIF es RR-based (necesita curva RR + shift de exposicion). Las AAF=1 no tienen curva RR (son 100% por definicion) -> quedan fuera del audit RR que alimenta el spec del PIF.
+
+IMPLICANCIA METODOLOGICA: el PIF actual SUB-ESTIMA la mortalidad evitable bajo cualquier escenario, porque las causas wholly-attributable son las MAS sensibles a politica (100% causadas por alcohol -> una reduccion de consumo las golpea de lleno). En InterMAHP/GBD se manejan con un SUB-MODELO DISTINTO: las muertes wholly-attributable escalan con el cambio contrafactual del consumo agregado (o prevalencia/volumen de bebedores), NO via integral de RR.
+
+PENDIENTE / DECISION ABIERTA: incluirlas es una extension legitima (las causas ya estan en la data del PAF) pero requiere un sub-modelo PIF aparte + eleccion de metodo (p.ej. PIF_wholly = reduccion fraccional del volumen total de alcohol bajo el escenario, aplicada a las muertes AAF=1). Es un juicio metodologico -> NO implementado aun; ofrecido al user escribir la formula exacta para aprobacion antes de codificar. Si se hace: agregar un track wholly-attributable a pif2_pif_results para que la cobertura del PIF calce con la del PAF.

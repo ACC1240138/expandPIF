@@ -460,10 +460,16 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
 #                      d_hed pero adopta RR_NHED. Requiere use_hed.
 #   scenario="volume": reduce consumo; rr_nhed_cf / rr_hed_cf son los RR evaluados
 #                      en x*shift. p_hed intacto.
+#   scenario="both"  : COMBINED counterfactual. Everyone reduces volume (x -> x*shift,
+#                      so rr_*_cf are evaluated at x*shift) AND a fraction
+#                      (1-shift_hed)*p_hed leaves binge, keeping its d_hed density but
+#                      adopting the VOLUME-REDUCED NHED risk. It is an exact superset:
+#                      shift_hed=1 -> "volume"; volume shift=1 (rr_*_cf==rr_*) -> "hed".
+#                      `shift` is the volume retained fraction, `shift_hed` the HED one.
 # rr_hed / rr_hed_cf pueden ser NULL si use_hed = FALSE.
 .pif_core <- function(x, d_nhed, rr_nhed, d_hed, rr_hed,
                       p_abs, p_form, rr_fd, p_hed,
-                      scenario, shift,
+                      scenario, shift, shift_hed = NULL,
                       rr_nhed_cf = NULL, rr_hed_cf = NULL,
                       use_hed = FALSE, cap_upper = TRUE) {
   cur <- 1 - (p_abs + p_form)
@@ -484,7 +490,7 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
     drinker_cf <- (1 - p_hed) * R_nhed +
                   shift * p_hed * R_hed +
                   (1 - shift) * p_hed * R_hed_nhedrr
-  } else {                                        # scenario == "volume"
+  } else if (identical(scenario, "volume")) {
     R_nhed_cf <- .aaf_risk(x, d_nhed, rr_nhed_cf)
     if (!is.finite(R_nhed_cf)) return(NA_real_)
     if (use_hed) {
@@ -494,6 +500,25 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
     } else {
       drinker_cf <- R_nhed_cf
     }
+  } else if (identical(scenario, "both")) {
+    # Combined: volume reduction for all drinkers (rr_*_cf at x*shift) plus a HED
+    # reduction that moves (1-shift_hed)*p_hed of the binge mass onto the
+    # volume-reduced NHED risk (keeping the d_hed consumption shape).
+    if (is.null(shift_hed)) stop(".pif_core: scenario='both' requiere shift_hed.")
+    R_nhed_cf <- .aaf_risk(x, d_nhed, rr_nhed_cf)
+    if (!is.finite(R_nhed_cf)) return(NA_real_)
+    if (use_hed) {
+      R_hed_cf <- .aaf_risk(x, d_hed, rr_hed_cf)
+      R_hed_nhedrr_cf <- .aaf_risk(x, d_hed, rr_nhed_cf)  # ex-binge at reduced volume
+      if (!is.finite(R_hed_cf) || !is.finite(R_hed_nhedrr_cf)) return(NA_real_)
+      drinker_cf <- (1 - p_hed) * R_nhed_cf +
+                    shift_hed * p_hed * R_hed_cf +
+                    (1 - shift_hed) * p_hed * R_hed_nhedrr_cf
+    } else {
+      drinker_cf <- R_nhed_cf   # no HED mass to reassign -> equals volume path
+    }
+  } else {
+    stop(".pif_core: unknown scenario '", scenario, "'.")
   }
   R_cf <- p_abs + p_form * rr_fd + cur * drinker_cf
   if (!is.finite(R_cf)) return(NA_real_)
@@ -571,9 +596,13 @@ pif_point <- function(x,
                       rr_hed = NULL,           # function(x,beta), "cap", o vector
                       beta_hed = NULL,
                       gamma_hed = NULL, y_hed = NULL,
-                      scenario = c("hed", "volume"), shift = 0.9,
+                      scenario = c("hed", "volume", "both"), shift = 0.9,
+                      shift_hed = NULL,
                       cap_upper = TRUE) {
   scenario <- match.arg(scenario)
+  # For a combined scenario, default the HED retained fraction to the volume one
+  # unless the caller passes an explicit (possibly different) shift_hed.
+  if (identical(scenario, "both") && is.null(shift_hed)) shift_hed <- shift
   if (is.null(y_nhed)) {
     if (is.null(gamma)) stop("pif_point: entregue gamma o y_nhed.")
     y_nhed <- .aaf_gamma_density(x, .aaf_gamma_pars(gamma))
@@ -598,9 +627,9 @@ pif_point <- function(x,
   }
 
   rr_n_cf <- NULL; rr_h_cf <- NULL
-  if (scenario == "volume") {
+  if (scenario %in% c("volume", "both")) {
     if (!is.function(rr_nhed)) {
-      stop("pif_point: scenario='volume' requiere rr_nhed como funcion(x,beta).")
+      stop("pif_point: scenario='", scenario, "' requiere rr_nhed como funcion(x,beta).")
     }
     rr_n_cf <- rr_nhed(x * shift, beta)
     if (length(rr_n_cf) == 1L) rr_n_cf <- rep(rr_n_cf, length(x))
@@ -614,7 +643,7 @@ pif_point <- function(x,
 
   .pif_core(x, y_nhed, rr_n, d_hed, rr_h, p_abs, p_form, rr_fd,
             if (use_hed) p_hed else 0,
-            scenario = scenario, shift = shift,
+            scenario = scenario, shift = shift, shift_hed = shift_hed,
             rr_nhed_cf = rr_n_cf, rr_hed_cf = rr_h_cf,
             use_hed = use_hed, cap_upper = cap_upper)
 }
@@ -772,8 +801,9 @@ aaf_confint <- function(
 # pif_confint: PIF puntual + IC 95% por Monte Carlo
 # -----------------------------------------------------------------------------
 # Misma maquinaria y argumentos que aaf_confint, mas:
-#   scenario = "hed" | "volume"   (ver .pif_core)
-#   shift    = fraccion RETENIDA  (0.9 = reduccion del 10%)
+#   scenario = "hed" | "volume" | "both"   (ver .pif_core)
+#   shift    = fraccion RETENIDA de VOLUMEN (0.9 = reduccion del 10%)
+#   shift_hed= fraccion RETENIDA de HED, solo scenario="both" (default = shift)
 # Comparte el R_obs poblacional con el PAF -> PAF y PIF son comparables.
 # IC en (-inf, 1] (sin clamp inferior), igual que el PAF: un PIF negativo senala
 # una intervencion no beneficiosa o una incoherencia del modelo, y NO se oculta.
@@ -787,7 +817,7 @@ pif_confint <- function(
     ln_rr_fd = NULL,
     var_ln_rr_fd = 0,
     x = seq(0.1, 150, length.out = 1500),
-    scenario = c("hed", "volume"), shift = 0.9,
+    scenario = c("hed", "volume", "both"), shift = 0.9, shift_hed = NULL,
     # --- bloque HED (opcional) ---
     p_hed = NULL,
     gamma_hed = NULL,
@@ -822,6 +852,10 @@ pif_confint <- function(
   if (!is.finite(n_pca) || n_pca < 2L) stop("n_pca debe ser >= 2.")
   if (length(x) < 2L) stop("x debe tener al menos dos puntos.")
   if (!is.finite(shift)) stop("shift debe ser finito.")
+  # Combined scenario: default the HED retained fraction to the volume one unless
+  # the caller passes an explicit shift_hed (allows different volume/HED reductions).
+  if (identical(scenario, "both") && is.null(shift_hed)) shift_hed <- shift
+  if (identical(scenario, "both") && !is.finite(shift_hed)) stop("shift_hed debe ser finito para scenario='both'.")
   neff_eff <- .aaf_resolve_neff_eff(neff_prev, design_factor)   # list(abs, form, hed)
   # Consumption design: effective n for the gamma resample (falls back to n_pca).
   n_pca_eff <- if (!is.null(neff_consumption)) {
@@ -884,13 +918,13 @@ pif_confint <- function(
     }
   }
   rr_n0_cf <- NULL; rr_h0_cf <- NULL
-  if (scenario == "volume") {
+  if (scenario %in% c("volume", "both")) {
     cf0 <- rr_vol_cf(beta, if (!is.null(beta_hed_v)) beta_hed_v else beta, hed_mode)
     rr_n0_cf <- cf0$rr_n; rr_h0_cf <- cf0$rr_h
   }
   point <- .pif_core(x, y_n0, rr_n0, y_h0, rr_h0, p_abs, p_form, rr_fd,
                      if (use_hed) p_hed else 0,
-                     scenario = scenario, shift = shift,
+                     scenario = scenario, shift = shift, shift_hed = shift_hed,
                      rr_nhed_cf = rr_n0_cf, rr_hed_cf = rr_h0_cf,
                      use_hed = use_hed, cap_upper = cap_upper)
 
@@ -916,13 +950,13 @@ pif_confint <- function(
     rfd <- if (fd_sd > 0) exp(rnorm(1, ln_rr_fd, fd_sd)) else rr_fd
 
     rr_n_cf <- NULL; rr_h_cf <- NULL
-    if (scenario == "volume") {
+    if (scenario %in% c("volume", "both")) {
       cf <- rr_vol_cf(rd$beta_n, rd$beta_h, rd$mode)
       rr_n_cf <- cf$rr_n; rr_h_cf <- cf$rr_h
     }
 
     .pif_core(x, y_n, rd$rr_n, y_h, rd$rr_h, pv$p_abs, pv$p_form, rfd, pv$p_hed,
-              scenario = scenario, shift = shift,
+              scenario = scenario, shift = shift, shift_hed = shift_hed,
               rr_nhed_cf = rr_n_cf, rr_hed_cf = rr_h_cf,
               use_hed = use_hed, cap_upper = cap_upper)
   }
@@ -1116,10 +1150,20 @@ aaf_error_log <- function() {
 
 # ---- pipeline age-group -> Adam age-band mapping (for the age-banded IHD/IS) --
 # 15_64 : group 4 (60-64) folds into Adam band 35-64 (the 15-64 pipeline).
+# 15_65 : group 4 (60-65) folds into Adam band 35-64 (the 15-65 pipeline). The
+#         ENPG survey frame is 12-65, so group 4 spans 60-65. The Adam band is
+#         IDENTICAL to 15_64 (35-64): the whole 60-65 group uses the 35-64 RR
+#         curve; the age-65 slice is deliberately NOT split out to the Adam 65+
+#         band (group is mostly 60-64; see handoff 2026-07-10). The "15_65" name
+#         exists only to document the real 60-65 support -- it changes no numbers
+#         relative to "15_64".
 # 15_plus: legacy, group 4 (60+) -> 65+.
-aaf_age_band_mapping <- function(age_scope = c("15_64", "15_plus")) {
+aaf_age_band_mapping <- function(age_scope = c("15_64", "15_65", "15_plus")) {
   age_scope <- match.arg(age_scope)
-  if (identical(age_scope, "15_64")) {
+  # 15_64 and 15_65 share the same Adam-band mapping (group 4 -> 35-64); only the
+  # underlying age support of group 4 differs (60-64 vs 60-65), which is handled
+  # upstream in the death/exposure filters, not here.
+  if (identical(age_scope, "15_64") || identical(age_scope, "15_65")) {
     data.frame(
       group = 1:4,
       adam_age_band = c("15-34", "35-64", "35-64", "35-64"),
