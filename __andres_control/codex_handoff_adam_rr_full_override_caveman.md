@@ -6156,3 +6156,87 @@ Verificacion:
   - 192 celdas `own_cell_specific`,
   - 32 celdas `fallback_next_valid_year_same_cell`.
 - Las 32 celdas 2020 usan `fallback_next_valid_year = 2022`.
+
+## 2026-07-09 19:10:45 -04:00 - Auditoria wiring Kish en motor AAF/PAF + gamma de consumo ponderado (funciones nuevas, pendientes de wire real)
+
+Contexto de la sesion:
+
+- El user pidio ayuda para "wirear el Kish al motor del PAF", queriendo hacerlo el mismo paso a paso (Claude solo audito/explico, no ejecuto R ni edito el notebook).
+
+Hallazgo 1 (el Kish YA estaba wireado antes de esta sesion):
+
+- `aaf_unified.R` ya tenia `.aaf_neff_list()` / `.aaf_resolve_neff_eff()` / `.aaf_draw_prev()`, consumidos por cada `compute_*_aaf_from_registry()` via los knobs `neff`, `design_factor`, `neff_consumption`, `design_factor_consumption`.
+- Wireado en vivo en `expand_pif.ipynb` (chunk `step2`): `kish <- design_table_to_engine_lists()` (de `revision_diseno_enpg_extension.R`) sobreescribe `aaf_uncertainty`, que se propaga a las 6 familias via `common_args`.
+- Lo que sigue pendiente (no tocado esta sesion, ya estaba anotado mas arriba en este handoff, ~linea 5401 "Migrar injuries... a pif_confint"): `pif_confint()`/`pif_point()` (mismo motor, mismos knobs Kish) nunca se llaman desde el notebook vivo; el PIF de injuries sigue corriendo por `pif_scenarios.R` (reescala inputs + re-corre el motor AAF), no por `pif_confint()` directo.
+
+Correccion del user (importante, corrige un supuesto de Claude):
+
+- `functions.R` NO es la unica fuente de verdad. Confirmado con grep sobre `expand_pif.ipynb`: `functions.R` nunca se sourcea (`source(...)`) en ningun lado -- solo aparece en comentarios/mensajes. El notebook tiene sus PROPIAS copias inline de los builders (chunk `step0-pre`). El notebook manda; `functions.R` es historial/referencia y puede divergir sin que nadie se entere (riesgo de copy-paste drift).
+
+Hallazgo 2 (el gamma de volumen de consumo NO usa el ratio fijo de Kehoe):
+
+- Se audito si el volumen de consumo se modela con el ratio sigma/mu fijo de Kehoe et al. 2012 (1.17 hombres / 1.26 mujeres, PMC3352241). NO se usa ese enfoque.
+- El gamma se ajusta con `fitdistrplus::fitdist(x, "gamma")` (MLE, SIN pesos muestrales) por celda (year x tramo x sexo x hed/nhed), sobre valores individuales `volajohdia` extraidos crudos de la encuesta (`dplyr::pull()`), independiente entre celdas.
+- Ubicacion real: `fit_gamma_by_tramo()` / `build_cd_hed_list()` en el chunk `step0-pre` de `expand_pif.ipynb` (copia de `functions.R`, nunca sourceado -- ver correccion de arriba).
+
+Hallazgo 3 (`neff_consumption`/`design_factor_consumption` NO ponderan el punto del gamma, solo el IC):
+
+- El user pregunto si enchufar `neff_consumption`/`design_factor_consumption` en `common_args` pondera el gamma por el peso muestral. Respuesta verificada en el codigo: NO.
+- Esos knobs solo reescalan `n_pca_eff` (`aaf_unified.R` L687-689), que fija el tamano de la remuestra sintetica en `.aaf_gamma_resample()` (L114-119) -- usada SOLO para el ancho del intervalo Monte Carlo.
+- El punto central (`pars_n <- .aaf_gamma_pars(gamma)`, L708; usado en el calculo determinista L714-728) queda fijo, viene del fit no ponderado. Kish/design ahi solo corrige incertidumbre, nunca el punto.
+- El user confirmo el porque via Pearson MoM: el punto (media/varianza ponderada por `FACTOR_EXPANSION`, denominador `sum(w)` sin Kish) es correcto SIN correccion de diseno, porque Kish corrige la varianza del estimador, no el estimador puntual. Coherente con que el motor deje el ajuste de diseno solo en la etapa de remuestreo MC.
+
+Implementacion (funciones nuevas entregadas al user en el chat para que las pegue el mismo; el notebook NO fue editado por Claude):
+
+- `fit_gamma_weighted(x, w)`: metodo de momentos ponderado, `shape = mu^2/var_w`, `rate = mu/var_w`; devuelve `$estimate` en el mismo formato que `fitdistrplus::fitdist()` (drop-in compatible con `.aaf_gamma_pars()`, sin tocar el motor).
+- `build_cd_hed_list_weighted()` / `fit_gamma_by_tramo_weighted()`: version weighted (split HED) de `build_cd_hed_list()`/`fit_gamma_by_tramo()`.
+- `build_cd_list_weighted()` / `fit_gamma_by_tramo_nohed_weighted()`: version weighted (pooled, sin split HED) de `build_cd_list()`/`fit_gamma_by_tramo_nohed()` (las que viven dentro de `step0-1`).
+- Estado al cierre de la sesion (confirmado via grep sobre el notebook real): las 4 funciones YA estan pegadas (~L7197-7241), pero el call site real dentro de `step0-1` (bloque `.adam_inputs <- list(...)`, ~L7426-7429) TODAVIA llama a las versiones NO ponderadas.
+- PENDIENTE explicito: cambiar esas 4 lineas a las variantes `_weighted` y re-correr `step0-1` (no solo Table 5) para que los objetos `g_fem_list`/`g_male_list`/`g_fem_hed_list`/`g_male_hed_list` en la sesion viva queden reconstruidos con el gamma ponderado antes de correr cualquier familia AAF.
+
+Hallazgo 4 (duplicacion de codigo confirmada entre step0-pre y step0-1, con riesgo real de consistencia):
+
+- `build_cd_list` (dentro de `step0-1`) es `build_cd_hed_list` (`step0-pre`) menos el split por `hed`. `fit_gamma_by_tramo_nohed` es `fit_gamma_by_tramo` menos la key `$nhed`/`$hed`. Es duplicacion real de codigo, no solo percepcion del user (confirmado leyendo ambas funciones linea por linea).
+- Las dos re-consultan `enpg_data` por separado con filtros casi identicos. Riesgo concreto: si `hed` tiene `NA` en algun bebedor actual (`volajohdia > 0`), el pooled (`build_cd_list`, sin filtro `hed`) podria incluir esas filas mientras el split (`build_cd_hed_list`, exige `hed %in% c(0,1)`) las excluye -- o sea `pooled != nhed union hed` sin que nada avise.
+- Se le entrego al user un chequeo (agrupar por year/edad_tramo, comparar `n_pooled` vs `n_split = sum(hed %in% c(0,1))`) para confirmar si esto ya esta pasando en los datos reales. NO corrido por Claude (no se ejecuto R en esta sesion, solo lectura de codigo).
+- Alternativa de bajo riesgo ofrecida (no aplicada): `build_cd_list_from_hed()`, deriva el pooled concatenando lo que `build_cd_hed_list` ya extrajo, en vez de re-filtrar `enpg_data` -- garantiza consistencia por construccion. Si el user la adopta, `build_cd_list_weighted()` de este handoff queda sin uso (se reemplaza por una version que concatena `x`/`w` de los sub-tramos).
+
+Hallazgo 5 (step0-pre / step0-1 no mantienen separacion de responsabilidades):
+
+- `step0-pre` deberia definir TODOS los builders; `step0-1` deberia solo ensamblar + auditar (como ya hace limpio `step0-1-save` con el bundle + save a RDS). En la practica, `build_cd_list`/`fit_gamma_by_tramo_nohed` (y ahora sus versiones `_weighted`, recien pegadas) quedaron definidas dentro de `step0-1`, no en `step0-pre`.
+- Propuesta (no aplicada): mover esas 4-6 funciones a `step0-pre`, al lado de sus hermanas HED.
+- Hallazgo menor relacionado: `adam_years_vec` se recalcula en ambos chunks con fallbacks distintos (`step0-pre` tiene fallback a `enpg_data`; `step0-1` no, y hace `stop()` en su lugar) -- riesgo de drift si un dia divergen.
+
+Hallazgo 6 (dos bugs cosmeticos en el chunk `table5-ihd-is-aaf-step2-same-engine`, no afectan el resultado numerico):
+
+- Warning `'drop' argument will be ignored`: `aaf_table5_rr_audit[intersect(audit_cols, names(...)), drop = FALSE]` le falta la coma vacia de fila (forma correcta: `df[, cols, drop=FALSE]`). R lo trata como seleccion de columnas (modo lista), donde `drop` no aplica -- el resultado sale bien igual.
+- `NULL` espurio en el output: `print(knitr::kable(...)) |> print()` tiene un `print()` de mas. El primero ya imprime la tabla via `cat()` y devuelve `NULL` invisible; ese `NULL` pasa al segundo `print()`, que lo muestra visiblemente como texto "NULL". Fix: sacar el `|> print()` final.
+- Ninguno de los dos fue aplicado por Claude (son ediciones al notebook, requieren permiso explicito del user).
+
+Estado general al cierre de esta sesion:
+
+- Nada de esto fue ejecutado en R real; todo el analisis fue lectura de codigo + grep sobre `expand_pif.ipynb`/`aaf_unified.R`/`revision_diseno_enpg_extension.R`/`functions.R`, sin correr el pipeline.
+- No se edito `expand_pif.ipynb` ni ningun `.qmd`/notebook -- todo el codigo nuevo (funciones weighted) se entrego en el chat para que el user lo pegue el mismo.
+- Pendientes explicitos para retomar:
+  1. Wire real de las 4 funciones `_weighted` en `step0-1` (cambiar las 4 lineas de `.adam_inputs`) + re-correr `step0-1` antes de cualquier corrida de AAF.
+  2. Correr el chequeo de consistencia pooled vs split por `NA` en `hed`.
+  3. Decidir si mover `build_cd_list`/`fit_gamma_by_tramo_nohed` (weighted o no) a `step0-pre`, y si adoptar `build_cd_list_from_hed()` en vez de `build_cd_list_weighted()`.
+  4. Aplicar los 2 fixes cosmeticos de Table 5 (el warning de `drop` y el `NULL` espurio).
+  5. Migracion pendiente de `pif_scenarios.R`/injuries a `pif_confint()` -- no tocada esta sesion, sigue en la lista original de este handoff.
+
+## 2026-07-09 21:05 Addendum: `aaf_long` global clobbeado por `make_jrt_compatible_cancer_table_ge60.R` (colision via `source()`)
+
+Hallazgo confirmado (user sospechaba, Claude rastreo y confirmo linea por linea):
+
+- Sintoma reportado por el user: tras un re-run completo del notebook, `table(aaf_long$disease)` mostraba SOLO las 8 causas de cancer (Breast/Colorectal/Larynx/Liver/Oesophagus/Oral Cavity and Pharynx/Pancreatic/Stomach; Breast=28 filas, resto=56), en vez de las 23 causas esperadas.
+- Causa raiz: `__andres_control/make_jrt_compatible_cancer_table_ge60.R` linea 137 define su propia variable `aaf_long <- dplyr::bind_rows(...)`, construida SOLO con las 8 tablas de cancer (`bcan/crcan/lxcan/lican/oescan/locan/panccan/stomcan`), leidas desde un RDS cacheado `aaf_nested_by_disease_20260703.rds` (fecha 03-jul, distinto del bundle fresco `..._20260709.rds` del working tree).
+- Ese script se invoca via `source(...)` SIN `local = TRUE` dentro de la celda `mort-trends-age-sex-chile17-cancer-5a-comparison` de `expand_pif.ipynb` (linea ~34878-34882). `source()` con `local = FALSE` (default) evalua en `.GlobalEnv`; en un notebook Jupyter/Quarto con kernel R, las celdas ya corren en `.GlobalEnv`, asi que la linea 137 pisa DIRECTAMENTE el `aaf_long` real del pipeline (23 causas, columnas canonicas `year/age_group/gender/disease/point/lower/upper`, construido en la celda `chile12-long-format-2`) con una version cancer-only en formato legacy (`Year/disease/sex/age_group/AAF/LL/UL`).
+- Esa celda de cancer-comparison corre ANTES (mas arriba en el notebook) que las celdas Table 5 IHD/IS del final (`table5-ihd-is-aaf-step3-pre-dgs-formatting`), asi que todo lo que corre despues hereda el `aaf_long` contaminado.
+- Esto explica retroactivamente por que esa celda Step 3 necesitaba tanta logica de deteccion/normalizacion legacy-vs-canonico (`legacy_aaf_long_cols`, `has_legacy_shape`, renombrar `Year->year`, `sex->gender`, `AAF->point`, etc.): esa logica estaba tapando en silencio esta contaminacion en vez de que el bug real se detectara con un guard.
+
+Fix propuesto (NO aplicado todavia, pendiente de que el user confirme):
+
+1. En `make_jrt_compatible_cancer_table_ge60.R`, renombrar la variable local de la linea 137 (p.ej. `aaf_long_cancer_jrt`) y actualizar su unico uso downstream en la linea ~224 (`dplyr::left_join(aaf_long, by = ...)` dentro de `pipeline_cancer`). Es un `.R` plano, no notebook, pero Claude pidio confirmacion antes de tocarlo.
+2. Defensa adicional: cambiar la celda del notebook que lo sourcea a `source(..., local = TRUE)`, para que ninguna asignacion suelta de ese script (o de otros sourceados igual) pueda volver a filtrarse a `.GlobalEnv`. Esto SI es un notebook edit -> requiere permiso explicito segun `AGENTS.md`.
+
+Estado al cierre: solo diagnostico (lectura de codigo + grep), nada ejecutado en R, nada editado en `expand_pif.ipynb` ni en el `.R`. Pendiente explicito: aplicar fix 1 y/o 2 cuando el user de luz verde, y re-correr el pipeline completo para confirmar que `aaf_long` mantiene las 23 causas hasta el final del notebook.

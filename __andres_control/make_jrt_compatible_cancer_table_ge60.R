@@ -1,19 +1,25 @@
-.t0 <- Sys.time()
-
+.t0 <- Sys.time()  # start timer for elapsed-time reporting
+# ------------------------------------------------------------------
+# 1. Resolve script location and project root
+# ------------------------------------------------------------------
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- grep("^--file=", args, value = TRUE)
 script_dir <- if (length(file_arg) == 1) {
+  # Running via Rscript: get the folder that contains this script
   dirname(normalizePath(sub("^--file=", "", file_arg), winslash = "/", mustWork = TRUE))
 } else {
+  # Sourced interactively: fall back to current working directory
   normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 }
-
 project_root <- if (basename(script_dir) == "__andres_control") {
+  # When script lives inside __andres_control, project root is one level up
   normalizePath(file.path(script_dir, ".."), winslash = "/", mustWork = TRUE)
 } else {
   normalizePath(script_dir, winslash = "/", mustWork = TRUE)
 }
-
+# ------------------------------------------------------------------
+# 2. Define input/output paths
+# ------------------------------------------------------------------
 path_jrt <- file.path(
   project_root,
   "JRT_20260702_cancer",
@@ -37,23 +43,31 @@ path_deis_2024 <- file.path(
   "DEFUNCIONES_FUENTE_DEIS_2024_2026_09062026.csv"
 )
 out_dir <- file.path(project_root, "JRT_20260702_cancer")
-
+# ------------------------------------------------------------------
+# 3. Sanity-check required files
+# ------------------------------------------------------------------
 required_files <- c(path_jrt, path_aaf, path_deis_2012_2023, path_deis_2024)
 missing_files <- required_files[!file.exists(required_files)]
 if (length(missing_files) > 0) {
   stop("Missing required file(s): ", paste(missing_files, collapse = "; "))
 }
-
+# ------------------------------------------------------------------
+# 4. Helper functions
+# ------------------------------------------------------------------
+# Generate ICD-10 codes at 3-character + suffix level.
+# letter  = leading letter (e.g. "C")
+# numbers = numeric stems (e.g. 18:21)
+# suffix  = final digit/character (default 0-9 + X)
 icd_codes_s6 <- function(letter, numbers, suffix = c(0:9, "X")) {
   as.vector(outer(sprintf("%s%02d", letter, numbers), suffix, paste0))
 }
-
+# Strip non-alphanumeric characters and force upper-case for ICD-10 codes
 clean_icd10 <- function(x) {
   out <- toupper(gsub("[^A-Za-z0-9]", "", as.character(x)))
   out[is.na(x)] <- NA_character_
   out
 }
-
+# Extract one component (point, lower, upper) from strings like "0.12 (0.08,0.16)"
 parse_aaf_ci <- function(x, group_index) {
   match <- stringr::str_match(
     x,
@@ -61,7 +75,7 @@ parse_aaf_ci <- function(x, group_index) {
   )
   as.numeric(match[, group_index])
 }
-
+# Pull one cancer AAF table out of aaf_unified and reshape to long format
 extract_aaf_unified_table <- function(cancer_tables, table_name, disease_i, sex_i) {
   tbl <- cancer_tables[[table_name]]
   if (is.null(tbl)) {
@@ -82,24 +96,27 @@ extract_aaf_unified_table <- function(cancer_tables, table_name, disease_i, sex_
       )
   }))
 }
-
+# ------------------------------------------------------------------
+# 5. Load JRT reference table (Excel exported as tab-delimited)
+# ------------------------------------------------------------------
 ref_cancer <- readr::read_tsv(
   path_jrt,
   locale = readr::locale(decimal_mark = ","),
   show_col_types = FALSE
 )
-
+# Keep the unique Year x disease x sex x age_group combinations present in JRT
 ref_keys <- ref_cancer |>
   dplyr::distinct(Year, disease, sex, age_group)
-
 target_years <- sort(unique(ref_cancer$Year))
-
+# ------------------------------------------------------------------
+# 6. Read and reshape aaf_unified cancer AAF estimates
+# ------------------------------------------------------------------
 aaf_unified <- readRDS(path_aaf)
 cancer_tables <- aaf_unified[["family_bundles"]][["cancer"]][["raw_result"]][["tables"]]
 if (is.null(cancer_tables)) {
   stop("Could not find cancer aaf_unified tables in: ", path_aaf)
 }
-
+# Map each internal aaf_unified cancer table name to disease label and sex
 aaf_table_map <- data.frame(
   table_name = c(
     "bcan_female",
@@ -133,8 +150,8 @@ aaf_table_map <- data.frame(
   ),
   stringsAsFactors = FALSE
 )
-
-aaf_long <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i) {
+# Combine all cancer AAF tables into one long data frame, restricted to JRT years
+aaf_long_can <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i) {
   extract_aaf_unified_table(
     cancer_tables = cancer_tables,
     table_name = aaf_table_map$table_name[[i]],
@@ -143,7 +160,9 @@ aaf_long <- dplyr::bind_rows(lapply(seq_len(nrow(aaf_table_map)), function(i) {
   )
 })) |>
   dplyr::filter(Year %in% target_years)
-
+# ------------------------------------------------------------------
+# 7. Load DEIS mortality data (2012-2023 parquet + 2024 CSV)
+# ------------------------------------------------------------------
 # 2026-07-07= Use nanoparquet instead
 deis_2012_2023 <- nanoparquet::read_parquet(path_deis_2012_2023) |>
   dplyr::transmute(
@@ -153,7 +172,7 @@ deis_2012_2023 <- nanoparquet::read_parquet(path_deis_2012_2023) |>
     diag1 = as.character(diag1),
     diag2 = as.character(diag2)
   )
-
+# 2024 file has a different layout; detect the year column by position
 deis_2024_raw <- readr::read_delim(
   path_deis_2024,
   delim = ";",
@@ -161,7 +180,7 @@ deis_2024_raw <- readr::read_delim(
   show_col_types = FALSE
 )
 year_col_2024 <- names(deis_2024_raw)[1]
-
+# Keep only 2024 records with completed age (EDAD_TIPO == 1)
 deis_2024 <- deis_2024_raw |>
   dplyr::transmute(
     year = as.integer(.data[[year_col_2024]]),
@@ -173,7 +192,9 @@ deis_2024 <- deis_2024_raw |>
   ) |>
   dplyr::filter(year == 2024, age_type == 1) |>
   dplyr::select(-age_type)
-
+# ------------------------------------------------------------------
+# 8. Standardize combined mortality: sex, age group, clean DIAG1
+# ------------------------------------------------------------------
 mortality <- dplyr::bind_rows(deis_2012_2023, deis_2024) |>
   dplyr::filter(year %in% target_years, age >= 15) |>
   dplyr::mutate(
@@ -192,7 +213,9 @@ mortality <- dplyr::bind_rows(deis_2012_2023, deis_2024) |>
     DIAG1_s6 = clean_icd10(diag1)
   ) |>
   dplyr::filter(!is.na(sex), !is.na(age_group))
-
+# ------------------------------------------------------------------
+# 9. Map ICD-10 codes to cancer disease categories
+# ------------------------------------------------------------------
 cancer_code_map <- list(
   "Breast Cancer" = icd_codes_s6("C", 50),
   "Colorectal Cancer" = icd_codes_s6("C", 18:21),
@@ -206,7 +229,7 @@ cancer_code_map <- list(
   "Pancreatic Cancer" = icd_codes_s6("C", 25),
   "Stomach Cancer" = icd_codes_s6("C", 16)
 )
-
+# Count deaths by Year/disease/sex/age_group for each cancer category
 mortality_counts <- dplyr::bind_rows(lapply(names(cancer_code_map), function(disease_i) {
   mortality |>
     dplyr::filter(DIAG1_s6 %in% cancer_code_map[[disease_i]]) |>
@@ -218,10 +241,12 @@ mortality_counts <- dplyr::bind_rows(lapply(names(cancer_code_map), function(dis
       name = "muertes"
     )
 }))
-
+# ------------------------------------------------------------------
+# 10. Build pipeline cancer alcohol-attributable mortality estimates
+# ------------------------------------------------------------------
 pipeline_cancer <- ref_keys |>
   dplyr::left_join(
-    aaf_long,
+    aaf_long_can,
     by = c("Year", "disease", "sex", "age_group")
   ) |>
   dplyr::left_join(
@@ -239,6 +264,7 @@ pipeline_cancer <- ref_keys |>
     Year, disease, sex, age_group, AAF, LL, UL, muertes,
     att_mort, att_mort_low, att_mort_up
   )
+# Stop if any AAF/CI values are missing after the join
 if (anyNA(pipeline_cancer[c("AAF", "LL", "UL")])) {
   missing_aaf <- pipeline_cancer |>
     dplyr::filter(is.na(AAF) | is.na(LL) | is.na(UL)) |>
@@ -249,7 +275,9 @@ if (anyNA(pipeline_cancer[c("AAF", "LL", "UL")])) {
 # but I will include it here for comparison.
 pipeline_cancer_60plus <- pipeline_cancer |>
   dplyr::filter(age_group == "60+")
-
+# ------------------------------------------------------------------
+# 11. Compare pipeline estimates against JRT reference
+# ------------------------------------------------------------------
 cancer_compare_comparable <- pipeline_cancer |>
   dplyr::full_join(
     ref_cancer,
@@ -265,7 +293,9 @@ cancer_compare_comparable <- pipeline_cancer |>
 
 cancer_compare_60plus <- cancer_compare_comparable |>
   dplyr::filter(age_group == "60+")
-
+# ------------------------------------------------------------------
+# 12. Write outputs
+# ------------------------------------------------------------------
 readr::write_tsv(
   pipeline_cancer,
   file.path(out_dir, "pipeline_cancer_aam_jrt_compatible_all_ages.txt")
@@ -282,7 +312,9 @@ readr::write_csv(
   cancer_compare_60plus,
   file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv")
 )
-
+# ------------------------------------------------------------------
+# 13. Validation checks
+# ------------------------------------------------------------------
 if (nrow(pipeline_cancer) != 420L) {
   stop("Unexpected all-age row count: ", nrow(pipeline_cancer))
 }
@@ -295,7 +327,9 @@ if (nrow(cancer_compare_comparable) != 420L) {
 if (nrow(cancer_compare_60plus) != 105L) {
   stop("Unexpected 60+ comparison row count: ", nrow(cancer_compare_60plus))
 }
-
+# ------------------------------------------------------------------
+# 14. Summary messages and elapsed time
+# ------------------------------------------------------------------
 max_abs_diff_muertes <- max(abs(cancer_compare_comparable$diff_muertes), na.rm = TRUE)
 message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_all_ages.csv"))
 message("Wrote: ", file.path(out_dir, "pipeline_vs_jrt_cancer_60plus.csv"))

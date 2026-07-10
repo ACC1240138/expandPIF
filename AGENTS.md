@@ -7,6 +7,8 @@
 - **Chunks will start with `.t0` and report elapsed time in minutes.**
 - **All code comments and messages will be in English unless you ask otherwise.**
 - **Watch out for mojibake characters, as incompatibilities between UTF‑8 and Latin1 may occur**
+- **We expect notebooks to be as self-contained as possible, avoiding dependencies on other R scripts or external files whenever feasible.**
+- **Be very verbose whenever possible, so the reader can clearly understand each part of a large function and properly audit it.**
 
 ## Handoff Notes
 
