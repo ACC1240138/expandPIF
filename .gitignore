@@ -21,6 +21,7 @@ desktop.ini
 
 # Notebook and render metadata it currently references
 !__andres_control/expand_pif.ipynb
+!__andres_control/expand_pif2.ipynb
 !__andres_control/expand_pif.html
 !__andres_control/expand_pif2.html
 !__andres_control/expand_pif_pipeline_detailed.bpmn
@@ -114,9 +115,7 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !_revisions.txt
 !__andres_control/_revisions.txt
 
-
 # expand_pif2.ipynb outputs
 !__andres_control/pif2_pif_results_*.rds
 !__andres_control/pif2_pif_audit_*.rds
 !__andres_control/pif2_pif_results_table5_*.rds
-!__andres_control/expand_pif2.html
