@@ -6394,3 +6394,82 @@ POR QUE (estructural): el motor PIF es RR-based (necesita curva RR + shift de ex
 IMPLICANCIA METODOLOGICA: el PIF actual SUB-ESTIMA la mortalidad evitable bajo cualquier escenario, porque las causas wholly-attributable son las MAS sensibles a politica (100% causadas por alcohol -> una reduccion de consumo las golpea de lleno). En InterMAHP/GBD se manejan con un SUB-MODELO DISTINTO: las muertes wholly-attributable escalan con el cambio contrafactual del consumo agregado (o prevalencia/volumen de bebedores), NO via integral de RR.
 
 PENDIENTE / DECISION ABIERTA: incluirlas es una extension legitima (las causas ya estan en la data del PAF) pero requiere un sub-modelo PIF aparte + eleccion de metodo (p.ej. PIF_wholly = reduccion fraccional del volumen total de alcohol bajo el escenario, aplicada a las muertes AAF=1). Es un juicio metodologico -> NO implementado aun; ofrecido al user escribir la formula exacta para aprobacion antes de codificar. Si se hace: agregar un track wholly-attributable a pif2_pif_results para que la cobertura del PIF calce con la del PAF.
+
+---
+
+## 2026-07-11 15:55 - Claude: VERIFICADO el denominador del PIF (= muertes TOTALES) + tablas de resultados agregadas a expand_pif2.ipynb + BUG del puente YPLL corregido
+
+CONTEXTO: el user pidio que expand_pif2.ipynb tuviera tablas de lo que calcula (formato htmltools::browsable como expand_pif.ipynb), y luego pidio /verify de mis consejos. La verificacion se hizo EJECUTANDO R 4.4.1 contra los artefactos reales (aaf_engine_inputs_bundle_20260710.rds, aaf_nested_by_disease_20260710.rds, pif2_pif_results_full_20260711.rds, Mortality Estimates WHO 2024.xlsx), NO leyendo codigo. Ademas corri una verificacion adversarial independiente (5 agentes) que confirmo lo mismo y encontro defectos extra.
+
+### HALLAZGO 1 (CENTRAL): el PIF del motor es fraccion de las muertes TOTALES, NO de las atribuibles
+
+ALGEBRA (aaf_unified.R): .aaf_core() (L429-453) devuelve AAF = num/(num+1) con num = (rr_fd-1)*p_form + cur*[(1-p_hed)*I_nhed + p_hed*I_hed] e I_g = R_g - 1. Expandiendo: num+1 = p_abs + p_form*rr_fd + cur*drinker = R_obs EXACTAMENTE (porque 1 - p_form - cur = p_abs). Y .pif_core() (L470-528) computa R_obs con la MISMA .aaf_pop_R() (L483) y devuelve pif = 1 - R_cf/R_obs (L525). MISMO DENOMINADOR:
+    AAF = 1 - 1/R_obs        PIF = 1 - R_cf/R_obs
+=> ambas son fracciones de las muertes TOTALES de la causa. Por lo tanto:
+    muertes evitadas = muertes TOTALES x PIF        <-- CORRECTO
+    muertes atribuibles x PIF                       <-- MAL (subestima por un factor = AAF)
+    PIF / AAF = fraccion de la carga ATRIBUIBLE que el escenario evita (es un RATIO, no un conteo)
+
+PRUEBAS NUMERICAS (motor real, celdas reales):
+- Causa nohed con RR_FD forzado a 1: PIF(volume, shift=0) = 0.0388227008 vs AAF = 0.0388227008 -> |dif| = 2e-17. La eliminacion total de exposicion evita EXACTAMENTE la fraccion atribuible de las muertes totales. Si el PIF fuera fraccion de las atribuibles, habria dado 1.0.
+- Identidad general PIF = (AAF - AAF_cf)/(1 - AAF_cf) sobre 72 celdas (todas las causas nohed x 4 shifts): desviacion max 2.9e-16. Es la formula estandar del PIF (fraccion de casos totales).
+
+MAGNITUD DEL ERROR (ola 2024, grilla real): la convencion vieja SUBESTIMA entre 2.5x y 5.0x.
+    volume_reduction_30: 242 muertes evitadas (correcto) vs 93 (convencion vieja)
+    hed_reduction_50   : 512 (correcto) vs 102 (vieja)
+
+### HALLAZGO 2: OJO - PIF(shift->0) NO converge al AAF en general. NO usarlo como check de validacion
+
+Los contrafactuales de volumen/HED NO tocan el termino de ex-bebedores p_form*RR_FD, asi que llevar la exposicion a cero deja ese exceso en pie. El comentario de cabecera de aaf_unified.R (~L35, "PAF = PIF de eliminacion total") SOLO vale para un contrafactual que TAMBIEN elimine el exceso de ex-bebedores. La identidad que SI se cumple (a 3e-16) es PIF = (AAF - AAF_cf)/(1 - AAF_cf). Mi primer test de identidad fallo por esto + por el Hallazgo 3; el motor estaba bien, el test estaba mal especificado.
+
+### HALLAZGO 3 (SUSTANTIVO, no es bug): una politica de SOLO VOLUMEN deja intacto casi todo el exceso por atracon en lesiones
+
+La RR de lesiones (modo explicit) tiene una componente HED con beta2 INDEPENDIENTE DEL VOLUMEN: RR_binge(x=0) = 2.618 (betaCurrent_binge = [0.00300, 0.95935, 0, 0]; RR_current(0) = 1.003). Bajar el consumo promedio a cero NO elimina el riesgo del atracon. Por eso los escenarios HED/combinados evitan mucho mas que los de volumen en lesiones, y por eso las dos familias NO son sustitutas. Implicancia de politica: una politica de precio que baje volumen sin tocar la prevalencia de HED deja gran parte de la mortalidad por lesiones en pie.
+
+### HALLAZGO 4: PIF > AAF ocurre, y SOLO en celdas con AAF <= 0 (J-curve)
+
+5.1% de las celdas de escenarios de volumen (193/3780) tienen PIF > AAF. TODAS tienen AAF negativo (Ischaemic Stroke: 168; DM2: 25). Entre las celdas con AAF > 0.001 (n=3558): PIF > AAF en 0 casos, max PIF/AAF = 0.845. => el ratio PIF/AAF ("% de la carga atribuible evitada") es INESTABLE/sin sentido donde el AAF <= 0. Por eso la tabla ahora publica NUMERADOR y DENOMINADOR por separado, sin imprimir el ratio.
+
+### HALLAZGO 5 (ALCANCE, ya anotado el 2026-07-10 17:36): las causas 100% atribuibles NO estan en la grilla del PIF
+
+CONFIRMADO CON NUMEROS: la tabla de mortalidad tiene 24 enfermedades; la grilla PIF tiene 23. La que falta es el bloque "Fully attributable to alcohol" (97 filas, 2628 muertes en todas las olas, 145 en 2024). No tiene curva RR -> no tiene AAF -> no tiene PIF. TODO total de muertes evitadas del notebook las EXCLUYE. Ver la entrada del 2026-07-10 17:36 para el detalle de codigos ICD y el sub-modelo pendiente.
+
+### HALLAZGO 6: las muertes TOTALES se recuperan exactas del export de mortalidad
+
+expand_pif.ipynb (cell 49) arma mort = point * n (n = conteo ICD) y exporta solo (year, age_group, gender, disease, mort, ll_mort, up_mort) SIN redondear. Entonces n = mort / AAF, con el AAF que ya vive en pif2_aaf_long. VERIFICADO: sobre 1188 celdas, max |n - round(n)| = 2.27e-13. El chequeo de integralidad PRUEBA ADEMAS que el xlsx de mortalidad y el bundle AAF vienen de la MISMA corrida del motor (si divergieran, n no daria entero). No usar == para el assert: 572/1188 celdas fallan igualdad estricta en doubles IEEE; usar round() + tolerancia.
+
+TRAMPA CRITICA: el guard debe ser abs(aaf) > 0, NO aaf > 0. Donde el AAF es NEGATIVO (cardioproteccion: Ischaemic Stroke 56 celdas + DM2-mujer 12) el mort tambien es negativo y mort/aaf SIGUE siendo el conteo POSITIVO correcto (verificado: residuo 4.3e-14). Con aaf > 0 esas 68 celdas se vuelven NA y, sumadas con na.rm=TRUE, DESAPARECEN en silencio de todas las tablas (Ischaemic Stroke entero). Yo cometi ese error en el primer borrador; lo detecto el sondeo y esta corregido.
+
+### CAMBIOS APLICADOS a expand_pif2.ipynb (con permiso explicito del user)
+
+MECANICA SEGURA: backup previo; parche por JSON (json.loads -> insertar celdas -> json.dumps(indent=1) + newline final), con round-trip byte-a-byte VERIFICADO antes de tocar (el dump reproduce el archivo original identico) -> el diff muestra SOLO mis cambios. Resultado contra el backup: 812 inserciones, 6 borrados (los 6 = exactamente las lineas del YPLL). 35 -> 47 celdas.
+
+12 CELDAS NUEVAS (4 markdown + 8 codigo), ninguna re-corre el motor (solo formatean lo ya calculado):
+- pif2tblhelpers (tras pif2-aaf-long-from-bundle): pif2_html_table()/pif2_html_tables()/pif2_fmt_ci()/pif2_cause_category()/pif2_gender_es(), labels de edad y sexo, pif2_report_year.
+- pif2tblspec (tras pif2-scenario-grid): output spec (45 tablas) + registro de escenarios.
+- pif2tblheadline / pif2tblsummary / pif2tblaudit (tras el "~314 minutes"): PIF por enfermedad x sexo x grupo etario (una columna por escenario), distribucion por escenario (marcada DIAGNOSTIC ONLY), celdas sin estimacion con su razon, y la auditoria enfermedad x escenario.
+- pif2deathsbridge: recupera muertes TOTALES (n = mort/AAF, con assert de integralidad que ABORTA si el xlsx y el bundle no calzan) y calcula muertes evitadas = TOTAL x PIF. Guarda tambien avoided_deaths_att_conv (convencion vieja) SOLO para comparar.
+- pif2tblavertedcat: agregacion por GRUPO DE CAUSA (los mismos 5 grupos de las figuras de expand_pif: Cancer/Cardiovascular/Injuries/Neuropsychiatric/Other Causes) x sexo x grupo etario. PIF ponderado por muertes = sum(evitadas)/sum(totales). OJO: un PIF NO se puede promediar entre enfermedades (la media de PIFs no es un PIF); el unico agregado valido es el ponderado por muertes. Incluye tabla de COBERTURA (cuantas causas alcanza cada escenario), porque el denominador CAMBIA con el escenario -> las celdas de una fila NO son comparables entre columnas de escenario.
+- pif2tblaverted: muertes evitadas por escenario x ola; las DOS convenciones lado a lado (con el ratio = 1/AAF ponderado); y numerador/denominador del "% de carga atribuible" como COLUMNAS SEPARADAS (sin ratio, por el Hallazgo 4).
+- pif2mdnotes: nota de interpretacion con los Hallazgos 1-5.
+
+DECISION DE DISENO: NO se imprime la grilla completa de 12,600 filas (inflaria el HTML self-contained y nadie la puede leer). Queda en pif2_pif_results_*.rds. La tabla headline (1 ola, 180 filas) + las agregadas por grupo de causa (40 filas) cargan el resultado.
+
+CORRECCION DEL PUENTE YPLL (celda pif2-ypll-bridge, id pif2cell14):
+- pif2_apply_pif_to_ypll() hacia avoidable_ypll = ypll_att * pif, donde ypll_att = ypll * AAF. Por el Hallazgo 1 eso subestima por un factor AAF. CORREGIDO a avoidable_ypll = ypll * pif (el cache YPLL ya trae la columna ypll TOTAL; el propio bridge deriva ypll_att de ella). Se conserva avoidable_ypll_att_conv con la convencion vieja para comparar.
+- NO HAY CACHE DE YPLL en este working copy (no existe Mortalidad/Matrices bajo la raiz expandPIF; los outputs guardados muestran que el YPLL.rds que leyo vivia en el arbol ACC1240138_private, en otra maquina). => pif2_ypll_cache = NULL, pif2_avoidable_ypll = NULL, la seccion esta INERTE hasta que se provea una matriz YPLL. Las tablas de muertes evitadas NO dependen de ella.
+
+OTROS FIXES aplicados en las celdas nuevas (todos detectados EJECUTANDO, no leyendo):
+- pivot_wider() IGNORA los niveles del factor (names_sort = FALSE por defecto): las columnas salian ordenadas por primera aparicion, y como las filas no-aplicables se agregan primero, la tabla arrancaba con los escenarios HED y enterraba baseline en la columna 10. FIX: names_sort = TRUE en TODOS los pivot_wider.
+- knitr.kable.NA es NULL por defecto -> las celdas NA imprimian el TEXTO "NA" (se lee como un valor, no como "no aplica"). FIX: options(knitr.kable.NA = "") dentro de pif2_html_table() -> salen en blanco.
+- Etiqueta del grupo etario 4: "60-65" (no "60-64"), consistente con el cambio del 2026-07-10 (between(edad, 60, 65)).
+- Auto-contencion: pif2deathsbridge define su propio pif2_gender_es() y NO depende de pif2_normalise_gender()/pif2_standardise_pif_table() (que nacen recien en la celda YPLL, mas abajo) -> el orden de celdas no lo rompe.
+
+VALIDACION: las 8 celdas de codigo nuevas se extrajeron DEL NOTEBOOK YA PARCHEADO y se ejecutaron en su orden real contra los objetos reales: 8/8 OK, 0 warnings, 6 salidas browsable renderizadas (602 KB de HTML). Checks: label grupo4 = 60-65; columnas en orden de la grilla = TRUE; Ischaemic Stroke presente (560 celdas); muertes evitadas con NA = 0; tabla de share con numerador+denominador y SIN ratio.
+
+PENDIENTE / HONESTIDAD:
+- El notebook NO se re-ejecuto end-to-end (las celdas pesadas: run-grid ~314 min, injuries ~75 min, table5 ~51 min). Las celdas nuevas SI se ejecutaron contra los .rds guardados de esas corridas, que es exactamente lo que consumen. Al re-correr el notebook completo deberian dar lo mismo.
+- NO se agregaron tablas a las secciones de lesiones, Table 5 ni al harness de validacion (ya imprimen sus kable; meterse ahi era mas disruptivo que util). Ofrecido al user.
+- __andres_control/pif2_table_chunks.md (borrador que escribi ANTES de verificar) contiene las versiones CON los defectos (guard aaf>0, sin names_sort, sin el fix de kable.NA). Esta OBSOLETO: el codigo bueno vive ahora en el notebook. Conviene borrarlo para que nadie lo pegue por error (ofrecido al user; no borrado sin permiso).
+- Sub-modelo para las causas 100% atribuibles en el PIF: sigue PENDIENTE (ver entrada del 2026-07-10 17:36). Mientras no exista, todo total de muertes/YPLL evitables del notebook es un PISO, no la cifra de politica.
+- Los IC de las sumas (muertes evitadas agregadas) suman los limites celda a celda -> asumen correlacion perfecta. Es una envolvente CONSERVADORA (ancha), no un IC Monte Carlo de la suma. Si se necesita el IC correcto, hay que propagar las draws del MC, no los limites.
