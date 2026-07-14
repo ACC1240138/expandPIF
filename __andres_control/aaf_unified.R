@@ -35,14 +35,107 @@
 # el mismo que usa el PAF; por eso PAF = PIF(eliminacion total).
 #
 # Contrafactuales del PIF (parametro `shift` = fraccion RETENIDA; 0.9 = -10%):
-#   scenario="hed"    : una fraccion (1-shift)*p_hed deja el binge -> pasa a NHED
-#                       CONSERVANDO su propio consumo (densidad d_hed) pero con
-#                       RR_NHED.  No se trunca el soporte en 60 g (correccion #1).
+#   scenario="hed"    : una fraccion (1-shift)*p_hed deja el binge -> pasa a NHED.
+#                       Que pasa con su CONSUMO al salir del binge lo gobiernan los
+#                       knobs hed_exit_* (bloque siguiente). Por DEFECTO conserva su
+#                       propia densidad d_hed y solo adopta RR_NHED.
+#                       No se trunca el soporte en 60 g (correccion #1).
 #                       R_cf usa: (1-p_hed)*R_nhed + shift*p_hed*R_hed
-#                                 + (1-shift)*p_hed*INT(d_hed/Z_hed)*RR_nhed
+#                                 + (1-shift)*p_hed*R_exit
 #   scenario="volume" : todos los bebedores reducen consumo (x -> x*shift); las
 #                       proporciones no cambian; RR se reevalua en x*shift
 #                       (equivale a escalar la gamma; s_hed intacto).
+#
+# -----------------------------------------------------------------------------
+# [2026-07-14] HED-EXIT REASSIGNMENT: hed_exit_mix (lambda) / hed_exit_shift (rho)
+# -----------------------------------------------------------------------------
+# Motivation. Until now, the mass leaving binge under scenario="hed"/"both" kept
+# its OWN consumption density d_hed and merely swapped onto the RR_NHED curve.
+# That treats HED as a pure risk-curve attribute, decoupled from grams: quitting
+# binge removed the binge-specific excess risk but not a single gram of alcohol,
+# so the HED scenarios were volume-neutral by construction. Transition models
+# (and Ruiz-Tagle's reallocation) instead assume the ex-binge drinker KEEPS
+# DRINKING as a non-HED drinker, retaining only the residual risk of the volume he
+# actually ends up consuming. Both are defensible; they are now the two ends of a
+# parameterised family, and neither is hard-coded.
+#
+# Two orthogonal knobs describe the counterfactual consumption of the exiting
+# mass. Writing R(d, rr) = INT (d/Z) * rr dx (see .aaf_risk, which normalises d):
+#
+#   hed_exit_shift = rho in (0, 1]   VOLUME the ex-binge drinker retains. He keeps
+#       the SHAPE of his own density d_hed but drinks rho of the grams, so his RR
+#       is read at x*rho:            R(d_hed, RR_NHED(x*rho))
+#       rho = 1 -> keeps his full volume (legacy behaviour).
+#
+#   hed_exit_mix = lambda in [0, 1]  FRACTION of the exiting mass that migrates
+#       outright to the NHED consumption DISTRIBUTION (drinks like an average
+#       non-HED drinker):            R(d_nhed, RR_NHED) = R_nhed
+#       lambda = 0 -> nobody migrates (legacy behaviour).
+#       lambda = 1 -> full migration (Ruiz-Tagle; also the old scale_phed semantics
+#                     of pif_scenarios.R, where the mass fell into the R_nhed bin).
+#
+# Because .aaf_risk normalises each density it is handed, the exiting subpopulation is
+# a convex mixture of two PROPER conditional densities, and its risk is the convex
+# mixture of the two subgroup risks -- exactly. So the two knobs compose in ONE line
+# and cost NO extra integral:
+#
+#   R_exit = (1 - lambda) * R(d_hed, RR_NHED(x*rho)) + lambda * R_nhed
+#
+# Under scenario="both" the same expression is evaluated on the volume-reduced risk
+# curves: the exiting mass reads its RR at x*shift*rho (the policy volume cut and
+# its own binge-exit cut compound) and migrates toward R_nhed_cf.
+#
+# DEFAULTS ARE THE LEGACY BEHAVIOUR. hed_exit_mix = NULL -> lambda = 0 and
+# hed_exit_shift = NULL -> rho = 1 reproduce every number computed before this date
+# bit for bit (with rho = 1 the RR vector is reused, not re-evaluated).
+#
+# -----------------------------------------------------------------------------
+# DIRECTION OF THE EFFECT -- READ THIS BEFORE REPORTING A SENSITIVITY RANGE
+# -----------------------------------------------------------------------------
+# It is TRUE only for MONOTONICALLY INCREASING RR families (cancers, liver, injuries,
+# and every "explicit"/"nohed" cause) that d_nhed sits below d_hed, so lambda > 0 or
+# rho < 1 lower R_cf and RAISE the PIF. For those causes the legacy default IS the
+# conservative bound of the family and a (lambda, rho) sweep IS a one-sided range.
+#
+# IT IS FALSE FOR THE J-CURVE / hed_mode = "cap" FAMILY (IHD and ischaemic stroke).
+# Measured on this project's own curves (GENERAL_ihd_RR_2018_03_16.R): the male IHD
+# RR_NHED is PROTECTIVE (< 1) across its ENTIRE sub-60 g/day range, with a nadir of
+# RR = 0.7787 at x ~ 31 g/day, and RR_HED is pinned at 1 by the cap. Moving the
+# exiting mass DOWN in volume therefore walks it around the bottom of the J, and the
+# PIF is NOT monotone in rho -- it can rise and then collapse, and lambda > 0 can
+# LOWER the PIF outright. Reproduced numbers (male IHD, p_hed = .35, shift = 0.9):
+#     lambda=0, rho=1 (legacy) -> PIF = 0.00424    <- an INTERIOR point, not a bound
+#     lambda=1, rho=1          -> PIF = 0.00407    (LOWER)
+#     lambda=0, rho=0.25       -> PIF = 0.00332    (LOWER)
+#     lambda=0, rho=0.10       -> PIF = 0.00220    (LOWER, -48%)
+#   and at a HED mean of 60 g/day, rho = 1/.75/.50/.25/.10 gives
+#     0.00284 / 0.00442 / 0.00526 / 0.00504 / 0.00373   (rises, THEN falls).
+# So: for IHD/IS, do NOT present a (lambda, rho) sweep as a one-sided sensitivity
+# range and do NOT call the legacy default a bound. Report the response surface, or
+# report min/max over the swept grid, and say that the non-monotonicity is a property
+# of the cardioprotective J-curve, not a numerical artefact.
+# test_hed_exit_knobs.R section (H) pins this behaviour against the real IHD curve so
+# that nobody "corrects" this warning back into a monotonicity claim.
+#
+# Accounting caveat: with lambda > 0 or rho < 1 the HED scenarios are NO LONGER
+# volume-neutral. They imply a drop in mean population consumption of
+#   (1-shift) * p_hed * [ lambda*(E[d_hed]-E[d_nhed]) + (1-lambda)*(1-rho)*E[d_hed] ]
+# which the scenario grid must report instead of the current 0%.
+#
+# PER-SUBGROUP knobs. lambda and rho are plain scalars at the CELL level, so a
+# caller looping over (year, sex, age band) may hand a DIFFERENT value to each cell
+# -- e.g. women 15-29 vs men 30-44, or a value monotone in age or in year, to feed
+# the forthcoming alcohol-transition model. Pass the per-cell scalar directly, or use
+# resolve_hed_exit() to turn a spec into it. Accepted shapes:
+#     scalar                                   -> broadcasts to every cell
+#     function(year, group, sex)               -> anything (monotone in age/year, ...)
+#     list("2022" = list(edad_tramo_1 = ...))  -> year -> age band
+#     list("2022" = 0.5)                       -> one value per year
+#     list(edad_tramo_1 = ..., ...)            -> one value per age band
+#     c(0.2, 0.4, 0.6, 0.8)                    -> numeric vector indexed by age band
+# resolve_hed_exit() ERRORS on any cell the spec does not cover -- it deliberately
+# does NOT fall back positionally the way .aaf_resolve_cell() does, because that
+# fall-back silently hands a cell ANOTHER cell's lambda (see the note in its body).
 #
 # -----------------------------------------------------------------------------
 # INCERTIDUMBRE de prevalencias (correcciones #2 y #4):
@@ -453,24 +546,174 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
 }
 
 # -----------------------------------------------------------------------------
+# [2026-07-14] HED-exit knobs: validation + per-cell resolution
+# -----------------------------------------------------------------------------
+# Normalise (hed_exit_mix, hed_exit_shift) to list(lambda, rho) with the legacy
+# defaults. NULL is the documented "leave it as it was" value:
+#   lambda = 0 -> the exiting binge mass keeps its own d_hed density;
+#   rho    = 1 -> and its full volume.
+.pif_hed_exit_pars <- function(hed_exit_mix, hed_exit_shift, .fn = "pif") {
+  # NULL is the documented "leave it as it was" value -> legacy constants.
+  lambda <- if (is.null(hed_exit_mix))   0 else as.numeric(hed_exit_mix)
+  rho    <- if (is.null(hed_exit_shift)) 1 else as.numeric(hed_exit_shift)
+  # Both knobs are CELL-level scalars: a vector here means the caller tried to pass a
+  # per-subgroup spec straight through. Resolve it with resolve_hed_exit() first.
+  if (length(lambda) != 1L || !is.finite(lambda) || lambda < 0 || lambda > 1) {
+    stop(.fn, ": hed_exit_mix (lambda) must be a single finite scalar in [0, 1] -- it is ",
+         "the share of the exiting binge mass that migrates to the NHED consumption ",
+         "distribution. Got: ", paste(format(lambda), collapse = ", "),
+         ". For per-subgroup values, resolve the spec per cell with resolve_hed_exit().")
+  }
+  if (length(rho) != 1L || !is.finite(rho) || rho <= 0 || rho > 1) {
+    stop(.fn, ": hed_exit_shift (rho) must be a single finite scalar in (0, 1] -- it is ",
+         "the fraction of volume RETAINED by whoever quits binge; an ex-HED drinker who ",
+         "INCREASES consumption is not a supported counterfactual. Got: ",
+         paste(format(rho), collapse = ", "),
+         ". For per-subgroup values, resolve the spec per cell with resolve_hed_exit().")
+  }
+  list(lambda = lambda, rho = rho)
+}
+
+# Resolve a per-subgroup HED-exit spec down to the scalar for ONE cell.
+# `spec` accepts the same shapes as the neff / design_factor knobs:
+#   * scalar                                  -> same value everywhere
+#   * function(year, group, sex)              -> arbitrary (incl. monotone in age or
+#                                                year, e.g. transition models)
+#   * list keyed [["<year>"]][["edad_tramo_<g>"]]
+#   * list keyed by group index
+#   * NULL                                    -> NULL (engine default = legacy)
+# Example (women 15-29 vs men 30-44):
+#   lam <- function(year, group, sex) if (sex == "female" && group == 1) 0.8 else 0.4
+#   pif_confint(..., hed_exit_mix = resolve_hed_exit(lam, y, g, record$sex))
+resolve_hed_exit <- function(spec, year, group, sex) {
+  # NULL propagates untouched: the engine then falls back to the legacy constants.
+  if (is.null(spec)) return(NULL)
+
+  # WHY THIS DOES NOT REUSE .aaf_resolve_cell() FOR LISTS.
+  # "list keyed by year" and "list keyed by group index" are AMBIGUOUS shapes: a
+  # year-keyed list is ALSO a valid positional lookup whenever length(spec) >= group.
+  # .aaf_resolve_cell() tries spec[["<year>"]] and, when that key is MISSING, falls
+  # through to spec[[group]] -- i.e. it indexes the YEAR list by the AGE-BAND index and
+  # returns a perfectly finite scalar belonging to a DIFFERENT cell. A downstream
+  # is.finite() guard cannot catch that, and the pif_confint() audit echo would then
+  # faithfully record the wrong lambda as if the caller had asked for it. A HED-exit
+  # spec that covers only some years (the natural thing for a policy assumption: e.g.
+  # only the survey waves) would silently run a DIFFERENT counterfactual on every
+  # uncovered year. So every list shape is resolved HERE, explicitly, with no
+  # positional fall-back: a spec that does not cover a cell is an ERROR, never a guess.
+  # (The same fall-through exists for neff / design_factor; it is NOT touched here --
+  # that is a separate module and a separate decision.)
+  fail <- function(...) {
+    stop("resolve_hed_exit: ", ..., " [cell: year=", year, ", group=", group,
+         ", sex=", sex, "]. A HED-exit spec must cover EVERY cell of the run: an ",
+         "uncovered cell would otherwise silently run a different counterfactual than ",
+         "the one the table claims.")
+  }
+  is_scalar_num <- function(v) is.numeric(v) && length(v) == 1L && is.finite(v)
+
+  v <- NULL
+
+  if (is.function(spec)) {
+    # (1) function(year, group, sex) -- covers everything: per-sex, per-band, monotone
+    #     in age or in year, or driven by the alcohol-transition model.
+    v <- spec(year, group, sex)
+
+  } else if (is.list(spec)) {
+    nm <- names(spec)
+    if (is.null(nm) || !length(nm) || any(!nzchar(nm))) {
+      fail("a list spec must be NAMED (either by year, e.g. `list(\"2022\" = ...)`, or ",
+           "by age band, e.g. `list(edad_tramo_1 = ..., edad_tramo_2 = ...)`)")
+    }
+    if (all(grepl("^[0-9]{4}$", nm))) {
+      # (2) year-keyed. Demand an EXACT hit on the year -- no positional fall-back.
+      yk <- as.character(year)
+      if (!yk %in% nm) {
+        fail("the year-keyed spec has no entry for year ", year,
+             " (it covers: ", paste(nm, collapse = ", "), ")")
+      }
+      ycell <- spec[[yk]]
+      if (is.list(ycell)) {
+        # year -> edad_tramo_<g>. Demand an EXACT hit on the band too.
+        key <- paste0("edad_tramo_", group)
+        if (is.null(ycell[[key]])) {
+          fail("the spec for year ", year, " has no entry '", key,
+               "' (it covers: ", paste(names(ycell), collapse = ", "), ")")
+        }
+        v <- ycell[[key]]
+      } else {
+        v <- ycell   # a single value for the whole year (same in every age band)
+      }
+    } else if (all(grepl("^edad_tramo_", nm))) {
+      # (3) band-keyed, constant across years.
+      key <- paste0("edad_tramo_", group)
+      if (is.null(spec[[key]])) {
+        fail("the band-keyed spec has no entry '", key,
+             "' (it covers: ", paste(nm, collapse = ", "), ")")
+      }
+      v <- spec[[key]]
+    } else {
+      fail("unrecognised list spec. Name it by YEAR (\"2022\", \"2023\", ...) or by AGE ",
+           "BAND (edad_tramo_1, ...), or pass a function(year, group, sex)")
+    }
+
+  } else if (is.numeric(spec) && length(spec) > 1L) {
+    # (4) plain numeric vector indexed by age band -- unambiguous (a vector, not a list).
+    if (!is.numeric(group) || group < 1L || group > length(spec)) {
+      fail("the per-band vector spec has length ", length(spec),
+           ", which does not cover band ", group)
+    }
+    v <- spec[[as.integer(group)]]
+
+  } else {
+    # (5) bare scalar -- broadcasts to every cell.
+    v <- spec
+  }
+
+  if (is.list(v) && length(v) == 1L) v <- v[[1L]]   # unwrap a length-1 list cell
+  v <- suppressWarnings(as.numeric(v))
+  if (!is_scalar_num(v)) {
+    fail("the spec did not resolve to a single finite number (got: ",
+         paste(format(v), collapse = ", "), ")")
+  }
+  v
+}
+
+# -----------------------------------------------------------------------------
 # Nucleo de la formula PIF (deterministico, vectores ya evaluados)
 # -----------------------------------------------------------------------------
 # Comparte el R_obs poblacional con el PAF (mismo denominador).
-#   scenario="hed"   : reduce binge; la masa (1-shift)*p_hed conserva su densidad
-#                      d_hed pero adopta RR_NHED. Requiere use_hed.
+#   scenario="hed"   : reduce binge; la masa (1-shift)*p_hed sale del binge y su
+#                      riesgo contrafactual R_exit lo fijan los knobs hed_exit_*
+#                      (ver abajo). Requiere use_hed.
 #   scenario="volume": reduce consumo; rr_nhed_cf / rr_hed_cf son los RR evaluados
-#                      en x*shift. p_hed intacto.
+#                      en x*shift. p_hed intacto (nadie sale del binge -> los knobs
+#                      hed_exit_* no aplican).
 #   scenario="both"  : COMBINED counterfactual. Everyone reduces volume (x -> x*shift,
 #                      so rr_*_cf are evaluated at x*shift) AND a fraction
-#                      (1-shift_hed)*p_hed leaves binge, keeping its d_hed density but
-#                      adopting the VOLUME-REDUCED NHED risk. It is an exact superset:
-#                      shift_hed=1 -> "volume"; volume shift=1 (rr_*_cf==rr_*) -> "hed".
+#                      (1-shift_hed)*p_hed leaves binge, its counterfactual risk again
+#                      given by the hed_exit_* knobs on the VOLUME-REDUCED curves. It
+#                      is an exact superset: shift_hed=1 -> "volume"; volume shift=1
+#                      (rr_*_cf==rr_*) -> "hed".
 #                      `shift` is the volume retained fraction, `shift_hed` the HED one.
+#
+# [2026-07-14] HED-exit reassignment (see header). The exiting mass no longer has a
+# hard-coded fate; its risk is the convex combination
+#     R_exit = (1 - hed_exit_mix) * R(d_hed, rr_nhed_exit) + hed_exit_mix * R_nhed
+# where
+#   hed_exit_mix  = lambda in [0,1], fraction migrating to the NHED consumption
+#                   DISTRIBUTION (drinks like an average non-HED drinker). 0 = legacy.
+#   rr_nhed_exit  = RR_NHED already evaluated at the volume the ex-binge drinker
+#                   retains, i.e. at x*rho ("hed") or x*shift*rho ("both"), rho being
+#                   hed_exit_shift. Pass NULL when rho == 1 and the legacy vector
+#                   (rr_nhed / rr_nhed_cf) is reused verbatim -> bit-for-bit identical
+#                   results to the pre-2026-07-14 engine. Callers (pif_point /
+#                   pif_confint) evaluate it; .pif_core keeps taking vectors only.
 # rr_hed / rr_hed_cf pueden ser NULL si use_hed = FALSE.
 .pif_core <- function(x, d_nhed, rr_nhed, d_hed, rr_hed,
                       p_abs, p_form, rr_fd, p_hed,
                       scenario, shift, shift_hed = NULL,
                       rr_nhed_cf = NULL, rr_hed_cf = NULL,
+                      hed_exit_mix = 0, rr_nhed_exit = NULL,
                       use_hed = FALSE, cap_upper = TRUE) {
   cur <- 1 - (p_abs + p_form)
   R_nhed <- .aaf_risk(x, d_nhed, rr_nhed)
@@ -483,13 +726,28 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
   R_obs <- .aaf_pop_R(p_abs, p_form, rr_fd, p_hed, R_nhed, R_hed, use_hed)
   if (!is.finite(R_obs) || R_obs <= 0) return(NA_real_)
 
+  # [2026-07-14] lambda: fraction of the exiting binge mass that migrates to the NHED
+  # consumption distribution. 0 (default) = it keeps its own d_hed density = legacy.
+  lambda <- if (is.null(hed_exit_mix)) 0 else as.numeric(hed_exit_mix)
+  if (length(lambda) != 1L || !is.finite(lambda) || lambda < 0 || lambda > 1) {
+    # Re-checked here (not only in the public wrappers) because .pif_core is also
+    # called directly by tests and by the notebook runners.
+    stop(".pif_core: hed_exit_mix (lambda) must be a single finite scalar in [0, 1].")
+  }
+
   if (identical(scenario, "hed")) {
     if (!use_hed) return(0)   # sin HED no hay binge que reducir -> PIF = 0
-    R_hed_nhedrr <- .aaf_risk(x, d_hed, rr_nhed)  # ex-HED: densidad d_hed, RR_NHED
+    # Ex-HED keeps the SHAPE of d_hed but reads RR_NHED at the volume it retains
+    # (rr_nhed_exit = RR_NHED(x*rho); NULL -> rho == 1 -> the legacy RR_NHED(x)).
+    rr_exit <- if (is.null(rr_nhed_exit)) rr_nhed else rr_nhed_exit
+    R_hed_nhedrr <- .aaf_risk(x, d_hed, rr_exit)
     if (!is.finite(R_hed_nhedrr)) return(NA_real_)
+    # Convex mixture of densities -> convex mixture of risks (.aaf_risk normalises),
+    # so the migrating share simply lands on R_nhed. No extra integral.
+    R_exit <- (1 - lambda) * R_hed_nhedrr + lambda * R_nhed
     drinker_cf <- (1 - p_hed) * R_nhed +
                   shift * p_hed * R_hed +
-                  (1 - shift) * p_hed * R_hed_nhedrr
+                  (1 - shift) * p_hed * R_exit
   } else if (identical(scenario, "volume")) {
     R_nhed_cf <- .aaf_risk(x, d_nhed, rr_nhed_cf)
     if (!is.finite(R_nhed_cf)) return(NA_real_)
@@ -502,18 +760,24 @@ if (!requireNamespace("MASS", quietly = TRUE)) {
     }
   } else if (identical(scenario, "both")) {
     # Combined: volume reduction for all drinkers (rr_*_cf at x*shift) plus a HED
-    # reduction that moves (1-shift_hed)*p_hed of the binge mass onto the
-    # volume-reduced NHED risk (keeping the d_hed consumption shape).
+    # reduction that moves (1-shift_hed)*p_hed of the binge mass out of binge; its
+    # fate is again set by the hed_exit_* knobs, now on the volume-reduced curves.
     if (is.null(shift_hed)) stop(".pif_core: scenario='both' requiere shift_hed.")
     R_nhed_cf <- .aaf_risk(x, d_nhed, rr_nhed_cf)
     if (!is.finite(R_nhed_cf)) return(NA_real_)
     if (use_hed) {
       R_hed_cf <- .aaf_risk(x, d_hed, rr_hed_cf)
-      R_hed_nhedrr_cf <- .aaf_risk(x, d_hed, rr_nhed_cf)  # ex-binge at reduced volume
+      # [2026-07-14] rr_nhed_exit = RR_NHED(x*shift*rho): the policy volume cut and the
+      # ex-binge drinker's own volume cut compound. NULL -> rho == 1 -> legacy rr_nhed_cf.
+      rr_exit_cf <- if (is.null(rr_nhed_exit)) rr_nhed_cf else rr_nhed_exit
+      R_hed_nhedrr_cf <- .aaf_risk(x, d_hed, rr_exit_cf)  # ex-binge at reduced volume
       if (!is.finite(R_hed_cf) || !is.finite(R_hed_nhedrr_cf)) return(NA_real_)
+      # Migrating share lands on the volume-reduced NHED risk (R_nhed_cf), not on R_nhed:
+      # under "both" even an average non-HED drinker has already cut volume by `shift`.
+      R_exit_cf <- (1 - lambda) * R_hed_nhedrr_cf + lambda * R_nhed_cf
       drinker_cf <- (1 - p_hed) * R_nhed_cf +
                     shift_hed * p_hed * R_hed_cf +
-                    (1 - shift_hed) * p_hed * R_hed_nhedrr_cf
+                    (1 - shift_hed) * p_hed * R_exit_cf
     } else {
       drinker_cf <- R_nhed_cf   # no HED mass to reassign -> equals volume path
     }
@@ -598,8 +862,12 @@ pif_point <- function(x,
                       gamma_hed = NULL, y_hed = NULL,
                       scenario = c("hed", "volume", "both"), shift = 0.9,
                       shift_hed = NULL,
+                      # [2026-07-14] HED-exit reassignment; NULL = legacy (lambda=0, rho=1)
+                      hed_exit_mix = NULL,     # lambda in [0,1]: share migrating to d_nhed
+                      hed_exit_shift = NULL,   # rho in (0,1]: volume retained by the ex-HED
                       cap_upper = TRUE) {
   scenario <- match.arg(scenario)
+  hx <- .pif_hed_exit_pars(hed_exit_mix, hed_exit_shift, "pif_point")
   # For a combined scenario, default the HED retained fraction to the volume one
   # unless the caller passes an explicit (possibly different) shift_hed.
   if (identical(scenario, "both") && is.null(shift_hed)) shift_hed <- shift
@@ -641,10 +909,28 @@ pif_point <- function(x,
     }
   }
 
+  # [2026-07-14] RR_NHED read at the volume the exiting binge mass RETAINS: x*rho for
+  # "hed", x*shift*rho for "both" (policy cut and binge-exit cut compound). Only the
+  # scenarios with exiting mass need it, and only when rho < 1 and lambda < 1 (with
+  # lambda == 1 the whole mass migrates to d_nhed and this term gets weight zero).
+  # rho == 1 -> stays NULL -> .pif_core reuses the legacy vector -> identical results.
+  rr_n_exit <- NULL
+  if (use_hed && scenario %in% c("hed", "both") && hx$rho != 1 && hx$lambda < 1) {
+    if (!is.function(rr_nhed)) {
+      stop("pif_point: hed_exit_shift < 1 requires rr_nhed as a function(x, beta): the ",
+           "NHED risk curve has to be RE-EVALUATED at the volume the ex-binge drinker ",
+           "retains (x * rho), which a pre-evaluated RR vector cannot provide.")
+    }
+    x_exit <- if (identical(scenario, "both")) x * shift * hx$rho else x * hx$rho
+    rr_n_exit <- rr_nhed(x_exit, beta)
+    if (length(rr_n_exit) == 1L) rr_n_exit <- rep(rr_n_exit, length(x))
+  }
+
   .pif_core(x, y_nhed, rr_n, d_hed, rr_h, p_abs, p_form, rr_fd,
             if (use_hed) p_hed else 0,
             scenario = scenario, shift = shift, shift_hed = shift_hed,
             rr_nhed_cf = rr_n_cf, rr_hed_cf = rr_h_cf,
+            hed_exit_mix = hx$lambda, rr_nhed_exit = rr_n_exit,
             use_hed = use_hed, cap_upper = cap_upper)
 }
 
@@ -804,6 +1090,15 @@ aaf_confint <- function(
 #   scenario = "hed" | "volume" | "both"   (ver .pif_core)
 #   shift    = fraccion RETENIDA de VOLUMEN (0.9 = reduccion del 10%)
 #   shift_hed= fraccion RETENIDA de HED, solo scenario="both" (default = shift)
+#   [2026-07-14]
+#   hed_exit_mix   = lambda in [0,1]: share of the exiting binge mass that migrates to
+#                    the NHED consumption distribution. NULL/0 = legacy (keeps d_hed).
+#   hed_exit_shift = rho in (0,1]: volume the exiting binge mass retains. NULL/1 = legacy.
+#   Both are CELL-level scalars, so the caller may pass a different value per
+#   (year, sex, age band) -- use resolve_hed_exit() on a per-subgroup spec. In the MC
+#   loop the exit RR is re-evaluated with the SAME drawn beta as the rest of the cell,
+#   so the knobs carry no extra uncertainty of their own (they are policy assumptions,
+#   not estimated parameters): vary them as a sensitivity, not as a random draw.
 # Comparte el R_obs poblacional con el PAF -> PAF y PIF son comparables.
 # IC en (-inf, 1] (sin clamp inferior), igual que el PAF: un PIF negativo senala
 # una intervencion no beneficiosa o una incoherencia del modelo, y NO se oculta.
@@ -818,6 +1113,9 @@ pif_confint <- function(
     var_ln_rr_fd = 0,
     x = seq(0.1, 150, length.out = 1500),
     scenario = c("hed", "volume", "both"), shift = 0.9, shift_hed = NULL,
+    # --- [2026-07-14] reasignacion de la masa que sale del binge; NULL = legacy ---
+    hed_exit_mix = NULL,     # lambda in [0,1]: share migrating to the d_nhed distribution
+    hed_exit_shift = NULL,   # rho in (0,1]: volume retained by the ex-HED drinker
     # --- bloque HED (opcional) ---
     p_hed = NULL,
     gamma_hed = NULL,
@@ -856,6 +1154,7 @@ pif_confint <- function(
   # the caller passes an explicit shift_hed (allows different volume/HED reductions).
   if (identical(scenario, "both") && is.null(shift_hed)) shift_hed <- shift
   if (identical(scenario, "both") && !is.finite(shift_hed)) stop("shift_hed debe ser finito para scenario='both'.")
+  hx <- .pif_hed_exit_pars(hed_exit_mix, hed_exit_shift, "pif_confint")  # [2026-07-14]
   neff_eff <- .aaf_resolve_neff_eff(neff_prev, design_factor)   # list(abs, form, hed)
   # Consumption design: effective n for the gamma resample (falls back to n_pca).
   n_pca_eff <- if (!is.null(neff_consumption)) {
@@ -903,6 +1202,28 @@ pif_confint <- function(
     list(rr_n = rn, rr_h = rh)
   }
 
+  # ---- [2026-07-14] local helper: RR_NHED at the volume the ex-HED drinker RETAINS ----
+  # Evaluated at x*rho under "hed", and at x*shift*rho under "both" (the policy volume
+  # cut and the drinker's own binge-exit cut compound). The grid is precomputed once;
+  # only the RR evaluation is redone per simulation, with the SAME drawn beta_n as the
+  # rest of the cell -- the knobs are policy ASSUMPTIONS, not estimated parameters, so
+  # they must not consume RNG draws or widen the CI on their own.
+  # Returns NULL when there is nothing to re-evaluate:
+  #   * no exiting mass (no HED, or scenario = "volume"),
+  #   * rho == 1  -> the ex-HED keeps its full volume: the legacy RR vector is correct,
+  #   * lambda == 1 -> the whole mass migrates to d_nhed and this term carries weight 0.
+  # In every one of those cases .pif_core reuses the legacy vector, so results stay
+  # bit-for-bit identical to the pre-2026-07-14 engine.
+  x_exit <- if (use_hed && scenario %in% c("hed", "both") && hx$rho != 1 && hx$lambda < 1) {
+    if (identical(scenario, "both")) x * shift * hx$rho else x * hx$rho
+  } else NULL
+  rr_exit_of <- function(beta_n) {
+    if (is.null(x_exit)) return(NULL)
+    v <- rr_fun(x_exit, beta_n)
+    if (length(v) == 1L) v <- rep(v, length(x))
+    v
+  }
+
   # ---- estimacion puntual (deterministica) ----
   y_n0 <- .aaf_gamma_density(x, pars_n)
   rr_n0 <- rr_fun(x, beta)
@@ -926,6 +1247,7 @@ pif_confint <- function(
                      if (use_hed) p_hed else 0,
                      scenario = scenario, shift = shift, shift_hed = shift_hed,
                      rr_nhed_cf = rr_n0_cf, rr_hed_cf = rr_h0_cf,
+                     hed_exit_mix = hx$lambda, rr_nhed_exit = rr_exit_of(beta),
                      use_hed = use_hed, cap_upper = cap_upper)
 
   # ---- una simulacion ----
@@ -958,6 +1280,9 @@ pif_confint <- function(
     .pif_core(x, y_n, rd$rr_n, y_h, rd$rr_h, pv$p_abs, pv$p_form, rfd, pv$p_hed,
               scenario = scenario, shift = shift, shift_hed = shift_hed,
               rr_nhed_cf = rr_n_cf, rr_hed_cf = rr_h_cf,
+              # same drawn beta_n as the rest of this simulation -> no extra RNG draw,
+              # so seeds/streams are untouched when the knobs are at their defaults.
+              hed_exit_mix = hx$lambda, rr_nhed_exit = rr_exit_of(rd$beta_n),
               use_hed = use_hed, cap_upper = cap_upper)
   }
 
@@ -971,7 +1296,11 @@ pif_confint <- function(
     upper_ci = unname(rnd(quantile(sims, 0.975))),
     n_used   = length(sims),
     scenario = scenario,
-    shift    = shift
+    shift    = shift,
+    # [2026-07-14] echo the HED-exit assumptions so the caller can record WHICH
+    # counterfactual produced this number (they are assumptions, not estimates).
+    hed_exit_mix   = hx$lambda,
+    hed_exit_shift = hx$rho
   )
   if (isTRUE(return_sims)) out$simulated_pifs <- sims
   out

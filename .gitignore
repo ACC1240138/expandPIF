@@ -115,9 +115,13 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !_revisions.txt
 !__andres_control/_revisions.txt
 
-# expand_pif2.ipynb outputs
+# expand_pif2.ipynb outputs and auxiliary files
 !__andres_control/pif2_pif_results_*.rds
 !__andres_control/pif2_pif_audit_*.rds
 !__andres_control/pif2_pif_results_table5_*.rds
 !__andres_control/pif2_injuries_fulltest_results_*.rds
 !__andres_control/pif2_injuries_fulltest_checks_*.rds
+!__andres_control/run_expand_pif2_full.R
+!__andres_control/expand_pif2.qmd
+!__andres_control/expand_pif2_files/
+!__andres_control/expand_pif2_files/**

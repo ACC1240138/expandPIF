@@ -6473,3 +6473,748 @@ PENDIENTE / HONESTIDAD:
 - __andres_control/pif2_table_chunks.md (borrador que escribi ANTES de verificar) contiene las versiones CON los defectos (guard aaf>0, sin names_sort, sin el fix de kable.NA). Esta OBSOLETO: el codigo bueno vive ahora en el notebook. Conviene borrarlo para que nadie lo pegue por error (ofrecido al user; no borrado sin permiso).
 - Sub-modelo para las causas 100% atribuibles en el PIF: sigue PENDIENTE (ver entrada del 2026-07-10 17:36). Mientras no exista, todo total de muertes/YPLL evitables del notebook es un PISO, no la cifra de politica.
 - Los IC de las sumas (muertes evitadas agregadas) suman los limites celda a celda -> asumen correlacion perfecta. Es una envolvente CONSERVADORA (ancha), no un IC Monte Carlo de la suma. Si se necesita el IC correcto, hay que propagar las draws del MC, no los limites.
+
+## 2026-07-14 15:32 - Claude: REASIGNACION DEL EX-HED en el PIF (knobs lambda/rho en aaf_unified.R) + DOS DEFECTOS CONFIRMADOS, uno de ellos mio y ya corregido
+
+### QUE PIDIO EL USER
+
+Su modelo hacia que reducir el HED bajara el riesgo "de forma aislada". En el modelo de RUIZ-TAGLE, el que deja el HED SIGUE BEBIENDO (pasa a NHED) y conserva un riesgo residual asociado a su volumen. Pregunta: como arreglarlo, y si se pueden meter lambdas POR SUBGRUPO (mujeres 15-29 vs hombres 30-44) pensando en el futuro modelo de transiciones.
+
+### DIAGNOSTICO: el motor NO hacia lo que el user creia, pero tampoco lo de Ruiz-Tagle
+
+aaf_unified.R (scenario="hed", pre-cambio): la masa que salia del binge CONSERVABA su propia densidad d_hed y solo adoptaba RR_NHED. O sea: dejar de emborracharse quitaba el exceso de RR del binge pero NO UN SOLO GRAMO de alcohol. Los escenarios HED eran NEUTRALES EN VOLUMEN por construccion. El HED estaba tratado como atributo de la curva de riesgo, desacoplado del consumo.
+
+Curiosamente la implementacion VIEJA (pif_scenarios.R, escalar p_hed) SI hacia lo de Ruiz-Tagle: la masa caia al balde (1-p_hed)*R_nhed, o sea adoptaba la densidad NHED. El motor unificado se volvio MAS CONSERVADOR que su antecesor sin que eso quedara documentado como decision.
+
+### LO IMPLEMENTADO (aaf_unified.R)
+
+Dos perillas ortogonales, escalares A NIVEL DE CELDA (year x sexo x tramo x causa):
+
+- hed_exit_mix   = lambda in [0,1] : fraccion de la masa saliente que MIGRA a la distribucion de consumo NHED (bebe como un no-HED promedio) -> riesgo R_nhed
+- hed_exit_shift = rho in (0,1]    : VOLUMEN que RETIENE el ex-HED: conserva la FORMA de d_hed pero toma rho de los gramos -> su RR se lee en x*rho
+- R_exit = (1-lambda)*R(d_hed, RR_NHED(x*rho)) + lambda*R_nhed
+
+Como .aaf_risk NORMALIZA cada densidad, la masa saliente es mezcla convexa de dos condicionales PROPIAS -> su riesgo es la mezcla convexa de los riesgos, EXACTO. Una linea, CERO integrales extra.
+
+Bajo scenario="both" la masa saliente lee su RR en x*shift*rho: el recorte de la politica y su propio recorte al salir del binge SE COMPONEN.
+
+DEFAULTS = LEGACY: NULL -> lambda=0, rho=1. Verificado BIT A BIT contra git HEAD (pif_point y pif_confint, mismo seed, los 3 escenarios). Con rho=1 ni siquiera se reevalua el RR: se reutiliza el vector viejo.
+
+lambda=1 = RUIZ-TAGLE = la vieja semantica de scale_phed. Probado con IDENTIDAD ANALITICA contra el motor AAF (que no pasa por .pif_core):
+    PIF(lambda=1) == 1 - (1-AAF(p_hed)) / (1-AAF(shift*p_hed))
+calza a 1e-10 en shift = 0.9 / 0.8 / 0.5 / 0.0.
+
+POR SUBGRUPO: SI se puede. resolve_hed_exit(spec, year, group, sex) acepta escalar | function(year, group, sex) | list por anio -> edad_tramo_<g> | list por tramo | vector numerico por tramo. Sirve para lambda monotono en edad o en anio (gancho para el modelo de transiciones).
+
+pif_confint() ahora DEVUELVE hed_exit_mix / hed_exit_shift en su salida -> queda registrado QUE contrafactual produjo cada numero.
+
+### DEFECTO 1 (MIO, CONFIRMADO CON LA CURVA REAL, YA CORREGIDO): la direccion del efecto que yo afirme es FALSA para IHD/IS
+
+Yo escribi en el header (y se lo dije al user): "lambda>0 o rho<1 SUBEN el PIF; el default legacy es la COTA CONSERVADORA; reportar como rango de sensibilidad". ES FALSO PARA LA FAMILIA J-CURVE (hed_mode="cap": IHD e ictus isquemico).
+
+Medido sobre GENERAL_ihd_RR_2018_03_16.R: el RR_NHED masculino de IHD es PROTECTOR (<1) en TODO el tramo bajo 60 g/dia, nadir RR=0.7787 a x~31 g/dia, y el cap deja RR_HED=1. Empujar la masa saliente HACIA ABAJO en volumen la pasea por el FONDO DE LA J:
+
+    legacy (lambda=0, rho=1) -> PIF = 0.00424   <- PUNTO INTERIOR, no cota
+    lambda=1, rho=1          -> PIF = 0.00407   (BAJA)
+    lambda=0, rho=0.25       -> PIF = 0.00332   (BAJA)
+    lambda=0, rho=0.10       -> PIF = 0.00220   (BAJA, -48%)
+    barrida rho a HED-mean 60 g/dia: 0.00284 / 0.00442 / 0.00526 / 0.00504 / 0.00373  (SUBE Y LUEGO CAE)
+
+=> en IHD/IS el PIF NO ES MONOTONO en rho y lambda>0 puede BAJAR el PIF. NO reportar una barrida (lambda,rho) como rango de un solo lado en esas causas. Para las familias de RR CRECIENTE (canceres, higado, lesiones) la afirmacion SI vale y el legacy SI es la cota conservadora.
+
+CORREGIDO: el header de aaf_unified.R ahora lleva la advertencia con los numeros, y test_hed_exit_knobs.R seccion (H) PINNEA la no-monotonia contra la curva IHD REAL, para que nadie "corrija" la advertencia de vuelta a una afirmacion de monotonia. La aritmetica de .pif_core siempre estuvo bien: el defecto era la GUIA DE REPORTE que yo shipee con la feature.
+
+### DEFECTO 2 (CONFIRMADO, YA CORREGIDO): .aaf_resolve_cell() FILTRA el valor de OTRA CELDA cuando falta la llave de anio
+
+.aaf_resolve_cell() prueba spec[["<anio>"]] y, si esa llave NO EXISTE, CAE a un lookup POSICIONAL spec[[group]] sobre la MISMA lista. O sea: indexa la lista de ANIOS con el indice del TRAMO ETARIO y devuelve un escalar finito y plausible... de otra celda. Ningun guard is.finite() lo puede pillar.
+
+Reproducido con spec = list("2022"=list(edad_tramo_1=0.20, edad_tramo_2=0.80), "2023"=list(edad_tramo_1=0.30, edad_tramo_2=0.90)):
+
+    resolve_hed_exit(spec, 2024, 2, "male") -> 0.30   (SILENCIO: es el edad_tramo_1 de 2023)
+    resolve_hed_exit(spec, 2024, 1, "male") -> 0.20   (SILENCIO: es el de 2022)
+    resolve_hed_exit(spec, 2024, 3, "male") -> crash opaco
+
+Impacto: un spec de HED-exit escrito para un SUBCONJUNTO de anios (lo natural en un supuesto de politica: solo las olas de la encuesta) correria en silencio un contrafactual DISTINTO en cada anio no cubierto, y el echo de auditoria registraria fielmente el lambda equivocado como si se hubiera pedido. En una celda real: PIF 0.003214 con el lambda pedido (0.80) vs 0.002138 con el lambda filtrado (0.30) = 33% de diferencia.
+
+CORREGIDO SOLO EN resolve_hed_exit(): ahora resuelve TODAS las formas de lista el mismo, sin fall-back posicional. Celda no cubierta = ERROR, nunca una adivinanza.
+
+OJO / PENDIENTE: el fall-through SIGUE VIVO en .aaf_resolve_cell(), que es lo que usan neff / design_factor / neff_consumption (incluido pif2_build_pif_args del notebook). NO lo toque: es otro modulo y otra decision (AGENTS.md). Pero si algun spec de diseno no cubre todos los anios, TIENE EL MISMO BUG. Vale la pena auditarlo aparte.
+
+### VALIDACION
+
+test_hed_exit_knobs.R (NUEVO, en __andres_control/): 57/57 verde. Secciones: (A) compat bit a bit vs git HEAD; (B) identidad analitica lambda=1 == scale_phed contra el motor AAF; (C) direccion/monotonia en familias de RR creciente; (D) algebra de escenarios (shift_hed=1 sigue colapsando a "volume"); (E) guardrails; (F) specs por subgrupo + REGRESION del filtrado de anios; (G) el MC honra los knobs y NO consume draws extra (mismo seed -> vector de simulaciones IDENTICO); (H) NO-MONOTONIA de la curva J real.
+
+test_aaf_unified.R: 27/27 verde, sin cambios.
+
+### PENDIENTE / HONESTIDAD
+
+- El motor corrio con datos SINTETICOS y con la curva IHD real, pero NO con las gammas ni las prevalencias reales del pipeline completo. Nada de esto es "validado end-to-end".
+- expand_pif2.ipynb NO ESTA CABLEADO (no se toco: requiere permiso explicito). La propuesta de chunk quedo en __andres_control/pif2_hed_exit_chunk_PROPUESTA.md (celda markdown + celda R, auto-contenidas, con un escenario HED lambda=1 = Ruiz-Tagle y un smoke test sobre una celda real).
+- TRAMPA AL CABLEAR: hay 4 sitios que convierten args de pif_confint en args de aaf_confint con args[setdiff(names(args), c("scenario","shift","shift_hed"))] (lineas ~16470, ~16860, ~17151, ~17409 del ipynb). aaf_confint NO tiene ... -> cualquier argumento extra revienta do.call con "unused argument". Hoy los 4 arman sus args desde una fila de escenario VOLUME, y el chunk propuesto adjunta los knobs SOLO a filas hed/both -> no se rompe nada. Esa seguridad es INCIDENTAL: si algun dia uno de esos checks apunta a una fila HED, hay que extender la lista a c("scenario","shift","shift_hed","hed_exit_mix","hed_exit_shift").
+- CONTABILIDAD SIN RESOLVER: con lambda>0 o rho<1 los escenarios HED DEJAN DE SER NEUTRALES EN VOLUMEN. Implican una caida del consumo medio de
+    (1-shift_hed) * p_hed * [ lambda*(E[d_hed]-E[d_nhed]) + (1-lambda)*(1-rho)*E[d_hed] ]
+  y la grilla sigue declarando volume_reduction_pct = 0 para esas filas. Hay que arreglar esa columna ANTES de publicar cualquier tabla con estos escenarios, o la escalera de escenarios miente sobre lo que la politica hace con los gramos.
+
+## 2026-07-14 14:xx - YPLL RECONCILIATION: GREEN. BUILD IT.
+
+PREGUNTA: se puede reconciliar YPLL rebuilt vs conteos de muertes del PIF? SI. 100%.
+
+CORRI CODIGO. NO es promesa, es prueba:
+- microdata carga con nanoparquet (rio::import). NO hace falta arrow. No instale nada.
+  mort21=369,854 + mort24=31,915 = mort=401,769. edad 15-65. anios 2012-2024.
+- apliqué el mapa ICD-10 PROPIO del pipeline (extraido verbatim de expand_pif.ipynb celdas 48/50),
+  bandas de edad (verifiqué: max edad en banda 4 = 65, NO 60+), sexo Hombre/Mujer.
+- recuperé n del pipeline = mort/AAF (xlsx WHO2024 + aaf_nested_20260710), guard abs(aaf)>1e-12.
+  1188 celdas, residuo no-entero max 2.274e-13, 68 celdas AAF NEGATIVA (IS H+M, DM2 Mujer).
+
+RESULTADO: 1188/1188 celdas EXACTAS. 0 mismatches. 0 huerfanas de ningun lado.
+  match rate 100.0000%. max discrepancia absoluta = 0. muertes 117,949 = 117,949.
+  conteos por enfermedad calzan la grilla ragged exacta (Panc.Aguda 55, Mama 28, HHD 54,
+  Laringe 36, Higado 54, Cirrosis 55, Esofago 43, Oral 49, OtrasFaringe 38, Pancreas 48, resto 56).
+  BONUS: "Fully attributable to alcohol" tambien calza 97/97 exacto.
+- construí la tabla YPLL en el schema target: su propia base de muertes calza 1188/1188.
+  sanity: YPLL medio por muerte BAJA monotono por banda 53.8 -> 39.7 -> 24.7 -> 15.4. OK.
+
+YPLL LEGACY (Mortalidad/Matrices/YPLL.rds) = BASURA, NO REUSAR NI EXTENDER.
+  Despejé el e0 implícito = (ypll + sum_age)/n en bandas 1-3 (donde 60-65 vs 60+ da igual):
+  - Intentional Injuries: e0 implícito ~44-49 aa. IMPOSIBLE con cualquier tabla de vida.
+    => usó OTRO set de muertes (mapa ICD pre-Shield).
+  - Road: mediana 75.5/80.7 pero rango 65.8-82.8. Unintentional(noroad): 76.1/81.5, rango 70.8-93.9.
+  - Si los sets calzaran y e0 fuera plano 76/82, CADA celda devolvería exactamente 76/82. No lo hace.
+  => su e0 NO es recuperable y su script generador NO está en el repo. Borrar y reemplazar.
+
+UNICO BLOCKER REAL: la convención de esperanza de vida e(x). NO EXISTE en el repo.
+  Es una DECISION, no un bloqueo de datos: el set de muertes es exacto, YPLL = f(e(x)) determinista.
+  Importa harto: plano 76/82 -> 3,304,847 YPLL ; referencia 88.87 -> 4,615,947 (ratio 1.40).
+
+OJO (menor, preexistente): bug edad_tipo. 109 muertes infantiles de 2024 pasan el filtro de edad
+  como adultas (edad_tipo 3/4 = dias/horas leidas como anios). Solo 4 caen en causa modelada
+  (todas LRI, porque P23 neumonia congenita esta en lri_codes) = 0.0034%. YA esta en los conteos
+  del pipeline -- por eso la reconciliacion da exacta. Flag, no blocker.
+
+CORRECCION a lo que se dijo antes: el path "C:/Users/andre/..." NO esta hardcodeado.
+  pif2_root_dir <- pif2_project_root(pif2_find_control_dir()) es DINAMICO; ese path es solo
+  el render guardado de otra maquina. Mortalidad/Matrices existe aca y el cache SI se va a encontrar.
+
+TRAMPA VIVA: 3 archivos matchean "^Mortality Estimates.*\.xlsx$" local (WHO 2024 / _adam / _ags);
+  la seleccion cae a mtime. HARDCODEAR el path en el rebuild.
+
+## 2026-07-14 18:10 - Claude: 6 gemelos JRT (lambda=1) cableados + RECONCILIACION DE MUERTES 1188/1188 EXACTA (el YPLL SE PUEDE reconstruir) + tablas de vida traidas de fuente oficial y VERIFICADAS contra fuente independiente
+
+### DECISIONES DEL USER EN ESTA SESION
+
+- Solo DOS reglas de salida del ex-HED, no un espacio de parametros: lambda=0 (conservadora, la suya) y lambda=1 (Ruiz-Tagle). rho queda en 1, sin usar: es el enchufe de calibracion.
+- Los gemelos lambda=1 van en las SEIS filas con masa saliendo del binge (3 hed_* + 3 combined_*). Grilla 10 -> 16 filas. Las filas volume/baseline NO se duplican: sin masa saliendo, lambda es un no-op matematico y el gemelo seria un duplicado bit-identico que cuesta una corrida entera.
+- Escenarios POR SUBGRUPO: SE SALTAN por ahora. El user no ha simulado transiciones por anio/edad/sexo; eso viene de la microsimulacion. El enchufe queda abierto (resolve_hed_exit acepta function/lista), pero hoy se le pasa un escalar y punto.
+- YPLL: reconstruir para las 23 causas, con LAS DOS convenciones lado a lado.
+
+### COSTE DE COMPUTO (regla simple, para no inventar estimaciones)
+
+Un gemelo lambda=1 cuesta EXACTAMENTE lo que costo su original lambda=0. No hay barrido ni explosion combinatoria: el motor corre las filas que la grilla declara, ni una mas.
+
+### ENTREGADO: __andres_control/pif2_hed_exit_chunk_PROPUESTA.md (4 celdas, el user las pega)
+
+- CELDA B: extiende la grilla con los 6 gemelos + envuelve pif2_build_pif_args (no lo edita) + LISTA DE DESCARTE SEGURA.
+- CELDA C: mata el volume_reduction_pct = 0.
+- CELDA D: smoke test sobre una celda real (lican_male 2022/30-44), lambda=0 vs lambda=1.
+- Los 3 bloques R PARSEAN (verificado con parse()).
+
+LISTA DE DESCARTE, el arreglo: hoy hay 4 sitios con args[setdiff(names(args), c("scenario","shift","shift_hed"))] para convertir args de pif_confint en args de aaf_confint. Es una BLACKLIST: aaf_confint no tiene ..., asi que cada argumento nuevo del motor la rompe con "unused argument", en 4 lugares, para siempre. Se invierte a WHITELIST leida de la propia funcion:
+    pif2_as_aaf_args <- function(args) args[intersect(names(args), names(formals(aaf_confint)))]
+Cualquier argumento futuro solo-PIF se cae solo. Nunca mas hay que tocar esos 4 sitios.
+
+volume_reduction_pct = 0, el arreglo: la caida implicita de consumo NO ES UNA CONSTANTE DEL ESCENARIO. Depende de p_hed, E[d_hed] y E[d_nhed], que cambian por anio, sexo y tramo. No se puede escribir en el tribble. Por eso volume_reduction_pct SE QUEDA como lo que siempre fue -- la PALANCA DE POLITICA -- y la celda C calcula POR CELDA lo que el contrafactual REALMENTE implica:
+    E_cf = s_v * [ (1-p)*E_nhed + s_h*p*E_hed + (1-s_h)*p*((1-lam)*rho*E_hed + lam*E_nhed) ]
+    cambio_pct = 100 * (E_cf/E0 - 1)
+Con un assert: las filas lambda=0 deben implicar EXACTAMENTE su palanca (si mueven gramos, el cableado esta mal).
+
+BUG ATRAPADO POR VERIFICAR: mi primer borrador de la celda C iteraba pif2_years / pif2_groups. pif2_groups NO EXISTE. La grilla itera pif2_run_cfg$years / pif2_run_cfg$groups. Si el user lo pegaba tal cual, reventaba.
+
+### HALLAZGO MAYOR: LA RECONCILIACION DE MUERTES ES EXACTA -> EL YPLL SE PUEDE RECONSTRUIR
+
+El riesgo era: si el YPLL reconstruido no reproduce los conteos de muertes que el pipeline ya usa (n = mort/AAF), se estaria multiplicando un PIF por un YPLL calculado sobre OTRA POBLACION -> basura silenciosa.
+
+VERIFICADO (corrido dos veces, la segunda por mi, no por el subagente):
+    celdas en AMBOS               : 1188
+      coincidencias exactas       : 1188
+      discrepancias               : 0
+    celdas solo en mi rebuild     : 0
+    celdas solo en el pipeline    : 0
+    MATCH RATE                    : 100.0000%
+    MAX DISCREPANCIA ABSOLUTA     : 0
+    muertes totales  mias=117949   pipeline=117949
+Reconstruir desde los microdatos DEIS (mapa ICD-10 propio del pipeline, Shield 2025 Tabla S6) reproduce EXACTAMENTE las 1188 celdas. Las 68 celdas de AAF negativo (Ischaemic Stroke H+M, DM2 mujer) recuperan conteos POSITIVOS y ENTEROS: la guarda abs(aaf)>0 es carga estructural, tal como decia el handoff del 11-jul. Ademas "Fully attributable to alcohol" reconcilia 97/97.
+
+arrow NO hace falta: rio::import lee el parquet via nanoparquet, que SI esta instalado.
+
+### EL YPLL.rds LEGACY ESTA CONSTRUIDO SOBRE OTRO CONJUNTO DE MUERTES -> HAY QUE REEMPLAZARLO, NO AMPLIARLO
+
+Se invirtio el artefacto (e0 implicita = (ypll + sum_age)/n) en los tramos 1-3, donde el desalineamiento 60+ vs 60-65 no puede morder. Intentional Injuries devuelve una e0 implicita de ~44-49 anios: IMPOSIBLE bajo cualquier tabla de vida. Si el conjunto de muertes coincidiera y e0 fuera el 76/82 del script, CADA celda devolveria exactamente 76.000/82.000. Ninguna lo hace. Es un mapa ICD pre-Shield, y el script que lo genero NO ESTA EN EL REPO.
+=> el argumento de "continuidad con lo publicado por JRT" que yo mismo use para ofrecer esa convencion NO SE SOSTIENE. La continuidad ya estaba rota.
+Cobertura del artefacto: 3 causas de lesiones, anios pares 2008-2022, tramo 4 = 60+ (el pipeline usa 60-65). Inservible para una grilla de 23 causas / 2012-2024.
+
+### TABLAS DE VIDA: NINGUNA EXISTIA EN EL REPO. TRAIDAS DE FUENTE OFICIAL Y VERIFICADAS. -> __andres_control/life_tables_20260714.R
+
+Ni la serie chilena e0 por anio y sexo (los 16 numeros del artefacto legacy estan HUERFANOS: no aparecen en ningun script), ni una tabla de referencia GBD. Lo unico en codigo era el 76/82 plano de PIF-BINGE.R:980, que CONTRADICE al propio artefacto.
+NO se inventaron numeros de memoria. Cada tabla se bajo de su fuente y se VERIFICO contra una fuente INDEPENDIENTE distinta.
+
+(1) GBD 2019 TMRLT -- VERIFICADA, DIGITO A DIGITO. El verificador bajo el archivo DE IHME MISMA (endpoint byte-preserving del Internet Archive sobre una ruta de ghdx.healthdata.org) y lo diffeo: las 21 filas IDENTICAS, cero discrepancias, MD5 coincidente. Dos snapshots separados por 19 meses son byte-identicos entre si -> el archivo nunca fue revisado en silencio. Huella e(0) = 88.8718951.
+    OJO 1: GBD 2017 es OTRA TABLA (edades 0-110+, no 0-95+, y ~1 anio MAS ABAJO en todo: e(15) 73.07 vs 74.07; e(65) 24.73 vs 25.68). Mi propio prompt afirmaba que era la misma: ERA FALSO. Citar ESTRICTAMENTE como GBD 2019, DOI 10.6069/1D4Y-YQ37.
+    OJO 2: los docs de metodos WHO GHE NO reproducen esta tabla -- WHO usa deliberadamente OTRA (frontera proyectada, e(0) ~90 en GHE2019 y ~92.7 en GHE2021). Quien busque "el doc de metodos YLL de la WHO" como contraste se llevara la tabla equivocada e INFLARA todos los YLL.
+
+(2) CHILE e0 (INE base-2024, edicion 28-ene-2026) -- TRANSCRIPCION LIMPIA, FUENTE NO VERIFICADA.
+    La lectura es correcta: un agente independiente re-bajo el mismo workbook (md5 identico) y re-parseo; las 26 celdas reproducen exactas. La alineacion fila/columna se PROBO con 4 anclas que el INE publica en prosa (1992 ambos=74.6; 2026=81.8/79.5/84.3; 2070=88.4/86.7/90.2; caida 2019->2021 de exactamente 1.7 anios).
+    PERO contra UN WPP 2024, LAS 26 CELDAS DIFIEREN y 19 superan 0.3 anios:
+      MUJERES: INE sistematicamente MAS ALTO que WPP los 13 anios, +0.32 a +1.05 (peor: 2019, INE 83.6 vs WPP 82.55).
+      HOMBRES: el signo SE INVIERTE a mitad de serie (INE debajo hasta 2017, encima 2019-2022, debajo otra vez 2023-24). Las dos autoridades discrepan no solo en el NIVEL sino en la FORMA de la tendencia y en la profundidad del pozo COVID.
+      WHO GHO es una TERCERA respuesta distinta, y se corta en 2021.
+    => una diferencia sistematica de ~1 anio en e(0) femenina mueve el YPLL atribuible Y PUEDE CAMBIAR LA DIRECCION de una tendencia 2012-2024. Hay que (a) NOMBRAR la autoridad en metodos, (b) JUSTIFICARLA (INE es defendible: oficina nacional, Censo 2024, registro vital chileno, y la UNICA que cubre 2022-2024 como ESTIMACIONES y no proyecciones), (c) correr SENSIBILIDAD contra WPP 2024 (la serie alternativa ya esta en el archivo), (d) NUNCA EMPALMAR autoridades (WPP tiene un rebote post-COVID masculino mucho mas empinado, +2.41 vs +1.7 -> empalmar inyectaria un salto artificial).
+    BONUS: en la base-2024, 2012-2024 son TODOS ESTIMACIONES, no proyecciones (INE: "se estimo el periodo 1992 al 2024"). Solo 2025-2070 se proyecta. 2024 es anio base sobre vitales aun provisionales -> es el valor mas propenso a revision.
+
+### HALLAZGO QUE CAMBIA LO QUE SIGNIFICA LA "CONVENCION JRT": e(0) NO ES LO QUE UN YLL NECESITA
+
+Un YLL usa e(x): esperanza de vida RESIDUAL A LA EDAD DE MUERTE. La convencion JRT (max(e0 - edad, 0)) es un YPLL DE EDAD DE REFERENCIA, no un YLL de tabla de vida. Y el INE NO HA PUBLICADO TABLA DE VIDA base-2024 (la URL da 404): la unica es base-2017, PRE-COVID desde 2018. Sacar e(x) de ahi citando e(0) base-2024 mezclaria anadas en silencio y SOBREESTIMARIA la vida residual justo en los anios COVID.
+=> las "dos convenciones" del user NO son dos tablas de vida: son DOS METRICAS DISTINTAS.
+   (1) ypll_ine = max(e0(anio,sexo) - edad_i, 0)   -> YPLL de edad de referencia. Comparable con JRT.
+   (2) yll_gbd  = e_gbd(edad_i)                    -> YLL estandar. Comparable con Kilian/Lancet PH 2025.
+   Se reportan en columnas SEPARADAS y NO se suman.
+
+BUENA NOTICIA: los microdatos DEIS traen EDAD INDIVIDUAL (anios simples), no tramos. Asi que NO aplica el sesgo clasico de asignar e(60) a todo el tramo 60-64 (que inflaria el YLL: la muerte media de ese tramo cae cerca de los 62). Se interpola la tabla GBD a anios simples. Interpolacion LINEAL, documentada explicitamente en el archivo (sobre 15-65 la tabla es casi lineal: cada paso de 5 anios cae ~4.9, asi que lineal vs spline es <0.1%).
+
+### PENDIENTE
+
+- El user debe REVISAR los numeros de life_tables_20260714.R antes de que se compute nada con ellos. Ese era el trato.
+- El BUILD del YPLL no esta escrito todavia (a proposito: no se construye sobre tablas sin revisar).
+- DUPLICACION DEL MAPA ICD: el build del YPLL tendria que replicar el mapa ICD-10 de expand_pif.ipynb en un .R. Si el notebook cambia su mapa, el YPLL diverge EN SILENCIO. El unico guardian es el test de reconciliacion (1188/1188) -> tiene que ser un stop() DURO y correrse cada vez que cambie el bundle AAF o el xlsx de mortalidad.
+- TRAMPA DE ARCHIVO RANCIO (viva en esta maquina): tres archivos matchean el regex "^Mortality Estimates.*\.xlsx$" en __andres_control (WHO 2024 [14-jul], _adam [26-may], _ags [15-may]); sin YYYYMMDD embebido, la seleccion cae a fecha de modificacion. Re-guardar _adam.xlsx cambiaria en silencio TODA la base de mortalidad. En el build del YPLL hay que HARD-CODEAR la ruta.
+- DEFECTO PREEXISTENTE edad_tipo (SOLO REPORTAR, NO ARREGLAR EN EL YPLL): en el archivo 2024, edad_cant son anios solo cuando edad_tipo == 1; el pipeline no lo guarda, y 109 muertes infantiles (88 en dias, 21 en horas) pasan el filtro 15-65 como adultas. De esas, solo 4 caen en una causa modelada (todas Lower Respiratory Infection, porque P23 esta dentro de lri_codes) = 0.0034% de las 117.949 muertes. YA ESTAN en los conteos del pipeline, que es precisamente por que la reconciliacion sale exacta. Si se "corrige" solo en el YPLL, SE ROMPE el match 1188/1188 y el assert de integralidad. Arreglarlo aguas arriba en expand_pif.ipynb para AMBOS modulos, o no arreglarlo.
+- .gitignore empieza con "*": ripgrep/Grep devuelven CERO en todo el repo por defecto. Hay que usar --no-ignore --hidden. Quien busque sin eso tendra un falso negativo en TODO.
+
+## 2026-07-14 20:15 - Claude: TRIANGULACION HMD/mortality.org -> aparece la TABLA DE VIDA CHILENA por edad simple (el bloqueador se acabo) + la convencion JRT esta SESGADA fuera de lesiones + flags de legacy y del selector de xlsx
+
+### EL USER APORTO LAS TABLAS DEL HMD (mortality.org) Y CAMBIAN LA DECISION
+
+Los archivos YA ESTABAN EN EL REPO, bajo un directorio que no lo sugiere:
+    __andres_control/ine_proyecciones_rebuild/mltper_1x1.txt   (hombres)
+    __andres_control/ine_proyecciones_rebuild/fltper_1x1.txt   (mujeres)
+    (+ los 5x1, version abreviada; NO usarlos: los microdatos traen edad SIMPLE)
+Human Mortality Database, "Chile, Life tables (period 1x1)", Methods Protocol v6 (2017), last modified 12-ene-2026. Reconstruccion desde estadisticas vitales + censo bajo protocolo internacional comun.
+
+CONTENIDO: e(x) = esperanza de vida RESIDUAL A LA EDAD EXACTA x, por anio (1992-2024), sexo y EDAD SIMPLE (0-110+). Para el marco del pipeline (15-65, 2012-2024, ambos sexos): 1.326 celdas, CERO NA. Cobertura completa.
+
+=> EL BLOQUEADOR "no existe tabla de vida chilena" SE ACABO. Ya no hay que improvisar con e(0).
+
+### TRIANGULACION e(0) 2012-2024: LAS TRES AUTORIDADES DISCREPAN
+
+  HOMBRES: HMD esta POR DEBAJO DE AMBAS los 13 anios.
+           vs INE: -0.41 (2012) ensanchandose a -1.05 (2024)
+           vs WPP: -0.35 a -1.60
+  MUJERES: HMD queda EN MEDIO -> por debajo del INE (-0.17 a -0.55), por encima de WPP (+0.11 a +0.76, salvo 2024)
+  COVID (caida e(0) 2019 -> 2021):
+           HMD hombres -2.12 | INE -2.00 | WPP -1.75   (HMD es el pozo MAS PROFUNDO)
+           HMD mujeres -1.55 | INE -1.50 | WPP -1.06
+=> discrepan hasta ~1 anio en NIVEL y en PROFUNDIDAD del pozo COVID. Hay que NOMBRAR la autoridad en metodos y correr sensibilidad. No presentar la esperanza de vida como un hecho asentado.
+
+### HALLAZGO MAYOR: LA CONVENCION JRT (e0 - edad) ESTA SESGADA, Y EL SESGO CRECE CON LA EDAD
+
+No es "cruda": es SISTEMATICAMENTE SESGADA A LA BAJA, por SELECCION. Quien ya sobrevivio hasta la edad x tiene una esperanza RESIDUAL mayor que e(0) - x.
+
+Hombre chileno, muerte en 2022 (anios perdidos):
+   edad | (1) legacy e0-edad | (2) HMD e(x) | (3) GBD TMRLT | sesgo de (1)
+     20 |       57.10        |    57.17     |    69.11      |   +0%
+     30 |       47.10        |    47.83     |    59.20      |   +2%
+     40 |       37.10        |    38.56     |    49.32      |   +4%
+     50 |       27.10        |    29.61     |    39.63      |   +9%
+     60 |       17.10        |    21.30     |    30.25      |  +25%
+     65 |       12.10        |    17.44     |    25.68      |  +44%
+
+LA CLAVE QUE LO EXPLICA TODO: el paper de JRT es de LESIONES -> muertes concentradas en JOVENES -> ahi el sesgo es ~0% y la convencion FUNCIONO. La grilla de 23 causas incluye CANCERES, CIRROSIS e IHD, concentrados en 45-65, donde el sesgo va de +9% a +44%.
+=> LA CONVENCION DE JRT ES DEFENDIBLE PARA LESIONES E INDEFENDIBLE PARA CAUSAS CRONICAS. El problema no es que sea vieja: es que se estaria extendiendo FUERA del dominio donde era valida. El tramo 4 (60-65) es justamente donde estan las muertes cronicas.
+
+### __andres_control/life_tables_20260714.R (ACTUALIZADO)
+
+Tres objetos, cada uno con fuente, URL/ruta, fecha de descarga y auto-chequeos que ABORTAN si alguien corrompe un digito:
+  chile_e0_ine_base2024  : e(0) INE base-2024 por anio y sexo (13 filas)   [para la convencion legacy]
+  chile_e0_wpp2024       : e(0) UN WPP 2024                                 [SOLO sensibilidad; nunca empalmar]
+  chile_hmd_lifetable    : e(x) HMD por anio x sexo x edad simple  + chile_hmd_ex(year, sex, age)
+  gbd2019_tmrlt          : e(x) GBD 2019 TMRLT (DOI 10.6069/1D4Y-YQ37)     + gbd2019_ex(age)
+El HMD se LEE DEL DISCO, no se transcribe a mano (7.326 filas: transcribir seria inaceptable).
+Auto-chequeo que PINNEA el sesgo: e(60) real debe superar (e0 - 60) por mas de 3 anios. Si eso deja de cumplirse, alguien cambio una tabla.
+chile_hmd_ex() y gbd2019_ex() ABORTAN ante una celda desconocida; NUNCA devuelven NA (un NA silencioso = una muerte que desaparece del YLL).
+
+VERIFICADO de la tabla GBD (turno anterior): el verificador bajo el archivo DE IHME MISMA (endpoint byte-preserving del Internet Archive sobre ruta ghdx.healthdata.org) y diffeo las 21 filas: IDENTICAS. Huella e(0) = 88.8718951. OJO: GBD 2017 es OTRA tabla (~1 anio mas abajo). Citar ESTRICTAMENTE como GBD 2019.
+
+### DECISIONES DEL USER EN ESTE TURNO
+
+1. NO BORRAR NADA. El Mortalidad/Matrices/YPLL.rds legacy SE QUEDA. Se marca como LEGACY (ver abajo).
+2. Triangular contra mortality.org antes de concluir -> HECHO, y cambio la conclusion.
+
+### *** FLAG: Mortalidad/Matrices/YPLL.rds ES LEGACY. NO USAR. NO BORRAR. ***
+
+Se conserva por decision explicita del user (14-jul). Queda anotado aqui para que nadie lo consuma por error:
+  - Esta construido sobre OTRO CONJUNTO DE MUERTES (mapa ICD pre-Shield). PROBADO invirtiendolo: la e0 implicita de Intentional Injuries sale ~44-49 anios, IMPOSIBLE bajo cualquier tabla de vida. Si el conjunto de muertes coincidiera y e0 fuera el 76/82 del script, CADA celda devolveria exactamente 76.000/82.000. Ninguna lo hace.
+  - El script que lo genero NO ESTA EN EL REPO. Su serie e0 es huerfana e irreproducible.
+  - Cobertura: 3 causas de lesiones, anios PARES 2008-2022, tramo 4 = 60+ (el pipeline usa 60-65).
+  - PELIGRO OPERATIVO: el consumidor usa pif2_read_latest_artifact() con patron "^YPLL.*\.rds$" sobre Mortalidad/Matrices/. Si se escribe un YPLL nuevo AHI MISMO, el selector debe elegir el nuevo (lleva YYYYMMDD embebido y el viejo no). CONFIRMAR eso al construir, o el pipeline puede regresar en silencio al legacy.
+
+### *** FLAG: EL SELECTOR DE XLSX DE MORTALIDAD ELIGE EL MAS RECIENTE POR FECHA DE MODIFICACION ***
+
+pif2_read_latest_artifact(directory = pif2_control_dir,
+                          pattern = "^Mortality Estimates WHO 2024\\.xlsx$|^Mortality Estimates.*\\.xlsx$",
+                          reader = readxl::read_xlsx)
+La SEGUNDA alternativa del regex es glotona y en __andres_control hay TRES archivos que matchean:
+    Mortality Estimates WHO 2024.xlsx   (14-jul 09:43)  <- el que se usa HOY
+    Mortality Estimates_adam.xlsx       (26-may 14:57)
+    Mortality Estimates_ags.xlsx        (15-may 11:33)
+NINGUNO lleva YYYYMMDD embebido -> la seleccion CAE A FECHA DE MODIFICACION. Resuelve al WHO 2024 solo porque es el mas nuevo. RE-GUARDAR _adam.xlsx (o abrirlo y salvarlo sin querer) CAMBIARIA EN SILENCIO TODA LA BASE DE MORTALIDAD del pipeline.
+La corrida guardada del notebook dice "Candidate count: 1" porque corrio en OTRA maquina (C:/Users/andre/Desktop/expandPIF/) donde solo existia un archivo. AQUI el candidate count es 3.
+=> En el build del YPLL: HARD-CODEAR la ruta del xlsx. Y conviene renombrar los dos viejos (p.ej. prefijo "_OLD_") o embeberles fecha, para que el regex no los alcance. No se toco nada: solo se reporta.
+
+### PENDIENTE
+
+- Decidir el SET DE METRICAS a construir (3 columnas propuestas): yll_hmd (nacional, recomendada) | yll_gbd (comparable Kilian/Lancet) | ypll_ref (legacy JRT, solo continuidad, marcada como sesgada fuera de lesiones).
+- El BUILD del YPLL sigue sin escribirse (a proposito: el test de reconciliacion 1188/1188 debe ir primero, como stop() duro).
+- DUPLICACION DEL MAPA ICD: el build replicaria el mapa ICD-10 de expand_pif.ipynb en un .R. Si el notebook cambia su mapa, el YPLL diverge EN SILENCIO. El unico guardian es el test de reconciliacion.
+- DEFECTO PREEXISTENTE edad_tipo: 109 muertes infantiles (88 en dias, 21 en horas) pasan el filtro 15-65 como adultas; 4 caen en causa modelada (LRI, por P23 dentro de lri_codes) = 0.0034% de 117.949. YA ESTAN en los conteos del pipeline -> por eso la reconciliacion sale exacta. "Corregirlo" solo en el YPLL ROMPE el match 1188/1188. Arreglar aguas arriba para ambos modulos, o no arreglar.
+
+## 2026-07-14 21:05 - Claude: YPLL RECONSTRUIDO para las 23 causas, con LAS TRES METRICAS. Gate 1188/1188. + El tramo >65 abierto explica el grueso del sesgo legacy (lo vio el user)
+
+### EL USER TENIA RAZON: el tramo >65 ABIERTO es el efecto MAS GRANDE, y es DISTINTO del de seleccion
+
+Yo habia mostrado el efecto de SELECCION (e0-edad subestima e(x)). El user pregunto si no seria tambien porque JRT tomo muertes >65. LO ES, y pesa mas. Medido sobre las lesiones reales (3 causas, 2012-2023, 15+ SIN tope):
+
+  EFECTO A - SELECCION, dentro de 60-65 (cerrado, como tu pipeline):
+      legacy 103.439 anios vs real (HMD) 131.474  -> el legacy PIERDE 21%
+
+  EFECTO B - PISO EN CERO sobre la banda 60+ ABIERTA (lo que hace el artefacto legacy):
+      muertes 60+ en su tramo 4        : 32.490   (edad maxima registrada: 121 anios)
+        ...con YPLL legacy = 0 EXACTO  : 13.260   -> el 41% del tramo aporta CERO
+      muertes >65 (que TU pipeline excluye y el legacy incluye): 26.045
+        ...con YPLL legacy = 0 EXACTO  : 13.416   -> el 51,5% de ellas
+        anios legacy  :  86.222
+        anios reales  : 250.639
+        -> el legacy PIERDE el 66% de los anios reales en ese tramo
+
+  COMBINADO, tramo 4 completo (60+ abierto): legacy 189.661 vs real 382.112 -> PIERDE EL 50%
+
+POR QUE: pmax(e0 - edad, 0) anula a TODA muerte por encima de e0 (~77 H / ~82 M). Un hombre que muere a los 80 "perdio cero anios". La tabla de vida le da ~7.
+NO ES UN BUG DE JRT: el YPLL de edad de referencia ES ASI POR DEFINICION; anular a los viejos es su semantica. El problema es de DOMINIO: su paper es de LESIONES EN JOVENES (efecto A ~0%, efecto B toca pocas muertes) y ahi la metrica funciona. Una grilla de 23 causas CRONICAS tiene la masa en 45-65+, y el punto ciego de la metrica cae JUSTO ENCIMA de las muertes.
+BUENA NOTICIA: el marco 15-65 CERRADO del pipeline es INMUNE al efecto B. Ninguna muerte de 60-65 supera e0 -> el piso NUNCA muerde (verificado en el build: 0 muertes tocan el piso). Solo queda el efecto A.
+
+DATO SUELTO: hay una muerte registrada a los 121 ANIOS en el parquet. Implausible. No bloquea nada (esta fuera del marco 15-65) pero conviene mirarlo.
+
+### ENTREGADO (3 archivos nuevos en __andres_control/)
+
+1. ypll_icd_defs.R  - mapa ICD-10 (Shield 2025 S6) + ypll_build_deaths() + ypll_deaths_long() + ypll_pipeline_deaths()
+   * RUTAS HARD-CODEADAS a proposito (ver la trampa del xlsx, mas abajo).
+   * ypll_pipeline_deaths() recupera n = mort/AAF con guarda abs(aaf) > 1e-12 (NUNCA aaf > 0).
+   * ADVERTENCIA EN EL PROPIO ARCHIVO: DUPLICA el mapa ICD de expand_pif.ipynb (un .ipynb no se puede source()). Si el notebook cambia su mapa, ESTE ARCHIVO DIVERGE EN SILENCIO. El unico guardian es el gate.
+
+2. test_ypll_death_base.R  - EL GATE. stop() DURO, no warning.
+   RESULTADO: 1188/1188 celdas, discrepancias 0, huerfanos del lado pipeline 0, max |diff| = 0 EXACTO, 117.949 muertes en ambos lados, 68 celdas de AAF NEGATIVO recuperadas con conteo POSITIVO (Ischaemic Stroke H 28 + M 28, DM2 M 12).
+   La FORMA DENTADA se reproduce causa por causa (Laringe 36, Esofago 43, Mama 28, Panc. Aguda 55...), que es MUCHO mas fuerte que cuadrar el total.
+   ASIMETRIA CORRECTA (y documentada en el test): la reconstruccion cubre los 13 anios (2012-2024, que es lo que traen los microdatos); la grilla PIF solo existe para las 7 OLAS ENPG (anios pares), porque la exposicion viene de la encuesta. Huerfanos de la reconstruccion en anios NO-OLA = ESPERADOS. Huerfanos en un anio OLA, o del lado del pipeline = FALLO DURO.
+
+3. build_ypll.R  -> Mortalidad/Matrices/YPLL_20260714.rds
+   Re-asserta el gate ANTES de construir (el test se puede saltar; esto no).
+
+### LAS TRES METRICAS (decision del user: las tres, lado a lado)
+
+Esquema: year | gender | age_group | disease | deaths | ypll | yll_hmd | yll_gbd | ypll_ref
+  yll_hmd  = e_HMD(anio, sexo, EDAD SIMPLE)   -> YLL NACIONAL. Recomendada como primaria.
+  yll_gbd  = e_GBD2019(edad)                  -> YLL COMPARABLE (Kilian/Lancet PH 2025)
+  ypll_ref = max(e0_INE(anio,sexo) - edad, 0) -> LEGACY/JRT. SESGADA fuera de lesiones.
+  ypll     = ALIAS de yll_hmd, para que el bridge existente (pif2_build_attributable_ypll /
+             pif2_apply_pif_to_ypll, que hace join por la columna `ypll`) siga funcionando SIN
+             cambios. Se dice en voz alta en el codigo; no es un default silencioso.
+
+TOTALES (23 causas, 2012-2024, 15-65, 2.197 celdas, 219.338 muertes):
+  yll_hmd  = 6.992.690 anios
+  yll_gbd  = 8.783.475 anios   (+26% : la referencia normativa GBD tiene e(0)=88.87)
+  ypll_ref = 6.435.304 anios   (-8,0% respecto del YLL nacional)
+
+ANIOS PERDIDOS POR MUERTE, por tramo (el sesgo del legacy sale a la luz):
+  tramo | HMD    | GBD    | legacy | sesgo legacy
+    1   | 55.70  | 65.75  | 55.22  |  -0,9%
+    2   | 42.40  | 51.56  | 41.17  |  -2,9%
+    3   | 28.71  | 36.73  | 26.09  |  -9,1%
+    4   | 20.87  | 27.88  | 16.80  | -19,5%
+=> el -8% global esconde un -19,5% en el tramo 4. Nunca reportar solo el agregado.
+
+CHEQUEOS DEL BUILD (todos stop() duros): 0 muertes tocan el piso pmax(...,0) [si alguna lo toca = alguien ensancho la banda y reintrodujo el defecto legacy]; anios/muerte CAEN monotonamente por tramo en las 3 metricas; el legacy queda POR DEBAJO del HMD en TODOS los tramos.
+Por muerte, NO por tramo: los microdatos traen EDAD SIMPLE, asi que no hay que asignar el punto medio de la banda (asignar e(60) a todo el 60-64 inflaria el YLL varios % y ningun test lo pillaria).
+
+### FLAGS OPERATIVOS (los dos que pidio el user)
+
+*** YPLL.rds LEGACY: SE CONSERVA, NO SE BORRA (decision del user 14-jul). NO USAR. ***
+    Ambos archivos conviven en Mortalidad/Matrices/:
+      YPLL.rds            sin fecha embebida, mtime 2026-05-04  <- LEGACY
+      YPLL_20260714.rds   fecha embebida 20260714, mtime 14-jul <- EL BUENO
+    El consumidor usa pif2_read_latest_artifact(pattern = "^YPLL.*\.rds$"). Con CUALQUIERA de
+    las dos reglas (ultima fecha embebida, o mtime) gana el nuevo. PERO HAY QUE CONFIRMARLO:
+    si avoidable_ypll_long vuelve con 3 enfermedades en vez de 23, el selector regreso al legacy.
+
+*** EL SELECTOR DEL XLSX DE MORTALIDAD ELIGE EL MAS RECIENTE POR FECHA DE MODIFICACION ***
+    Tres archivos matchean el regex en __andres_control (WHO 2024 / _adam / _ags), ninguno con
+    YYYYMMDD embebido -> la seleccion CAE A MTIME. Resuelve al WHO 2024 solo porque es el mas
+    nuevo. RE-GUARDAR _adam.xlsx (o abrirlo y salvarlo sin querer) CAMBIARIA EN SILENCIO TODA LA
+    BASE DE MORTALIDAD. Por eso ypll_icd_defs.R HARD-CODEA la ruta. Conviene renombrar los dos
+    viejos con prefijo _OLD_ para que el regex no los alcance (no se hizo: requiere permiso).
+
+### PENDIENTE
+
+- CABLEAR expand_pif2.ipynb: (a) los 4 chunks del PIF (pif2_hed_exit_chunk_PROPUESTA.md, los 6
+  gemelos lambda=1 + whitelist de args + implied volume), (b) apuntar el bridge YPLL al nuevo
+  cache. NO SE TOCO EL NOTEBOOK (requiere permiso explicito).
+- Re-correr la grilla (~314 min + los 6 gemelos) y comprobar que avoidable_ypll_long pasa de 3
+  a 23 enfermedades y de 6 a 45 tablas.
+- SENSIBILIDAD de la esperanza de vida: las 3 autoridades (HMD/INE/WPP) discrepan hasta ~1 anio.
+  Nombrar la autoridad en metodos. chile_e0_wpp2024 ya esta en life_tables_20260714.R para eso.
+- edad_tipo: 109 muertes infantiles pasan como adultas (4 en causa modelada, LRI via P23) =
+  0,0034%. YA ESTAN en los conteos del pipeline -> por eso el gate sale exacto. Corregirlo SOLO
+  en el YPLL ROMPERIA el 1188/1188. Arreglar aguas arriba para ambos modulos, o no arreglar.
+
+## 2026-07-14 22:40 - Claude: expand_pif2.ipynb CABLEADO (con permiso del user) + VERIFICADO EJECUTANDO. Dos bugs mios encontrados AL CORRERLO. La blacklist vieja SI reventaba.
+
+### QUE SE TOCO (backup: __andres_control/expand_pif2.BACKUP_20260714.ipynb, md5 verificado)
+
+47 -> 52 celdas. Parche por texto sobre el JSON (el .ipynb tiene 82k tokens: ninguna herramienta lo puede round-tripear), con validacion de parseo JSON + conteo de celdas + unicidad de ids DESPUES de escribir.
+
+5 CELDAS NUEVAS:
+  pif2hedexitmd     (md)   explica las dos reglas de salida (lambda 0 vs 1)
+  pif2hedexitwire   (code) grilla 10 -> 16 escenarios (6 gemelos JRT) + pif2_as_aaf_args() + wrapper de pif2_build_pif_args
+  pif2hedexitvol    (code) caida de consumo IMPLICITA por celda (mata el volume_reduction_pct = 0)
+  pif2hedexitsmoke  (code) smoke test sobre una celda real, lambda=0 vs lambda=1
+  pif2yll3metrics   (code) tras el bridge YPLL: las 3 metricas x PIF + guard anti-legacy
+4 SITIOS setdiff() -> pif2_as_aaf_args()  (blacklist -> whitelist leida de formals(aaf_confint))
+
+### *** DOS BUGS MIOS, ENCONTRADOS AL EJECUTAR EL NOTEBOOK (no leyendolo) ***
+
+BUG 1 - ORDEN DE DEPENDENCIAS. La celda pif2hedexitvol (linea ~2009) usaba pif2_run_cfg, que se
+define en la linea 2354, DENTRO de la celda del grid, o sea DESPUES. En una corrida limpia de
+arriba a abajo su stopifnot() abortaba.
+ARREGLADO: usa pif2_run_cfg si existe; si no, cae a pif2_years / 1:4 -- que es EXACTAMENTE lo que
+pif2_run_cfg$years resuelve en modo "full" (pif2_pif_run_config$full$years == pif2_years). Lo dice
+en voz alta con un pif2_message, no en silencio. En modo "demo" la tabla cubriria MAS celdas que la
+corrida (el grid solo hace la ultima ola); tambien queda dicho.
+
+BUG 2 - CAUSA SIN HED. El smoke test usaba lican_male (cancer de higado). En pif2_output_spec es
+mode = "nohed", uses_hed = FALSE -> un escenario "hed" sobre el revienta con
+"pif_confint: scenario='hed' requiere p_hed>0". 35 de las 45 salidas son nohed.
+Las HED-capable son: cap (ihd_*, is_*) y explicit (ri_*, injuries_*, violence_*).
+ARREGLADO: ri_male (Road Injuries) -- explicit, HED-capable y con RR MONOTONO, que es lo que hace
+que el check de direccion (JRT >= conservador) signifique algo. IHD/IS tambien son HED-capable pero
+su curva J hace la direccion genuinamente ambigua: son la celda EQUIVOCADA para assertar direccion.
+
+### *** PROBE QUE CAMBIA UNA AFIRMACION MIA: LA BLACKLIST VIEJA SI REVENTABA ***
+
+Yo dije que los 4 sitios setdiff "hoy igual funcionan porque arman sus args desde una fila volume".
+Cierto de los sitios ACTUALES. Pero probado al surface, con args reales de una fila lambda=1:
+    args -> pif_confint: scenario, shift, shift_hed, hed_exit_mix, hed_exit_shift
+    whitelist NUEVA -> aaf_confint() -> AAF = 0.371753                              OK
+    blacklist VIEJA -> ERROR: los argumentos no fueron usados (hed_exit_mix = 1, hed_exit_shift = 1)
+=> el reemplazo NO ERA DEFENSIVO, ERA NECESARIO. En cuanto cualquiera de esos 4 sitios toca una
+fila HED/both, la blacklist se cae. Ahora la whitelist se lee de formals(aaf_confint), asi que
+cualquier argumento futuro solo-PIF se descarta solo y esos 4 sitios no se tocan nunca mas.
+
+### RESULTADOS DE LA EJECUCION (celdas 1..23 del notebook, objetos REALES, sin correr el grid)
+
+GRILLA: 16 escenarios (10 conservadores, 6 Ruiz-Tagle). Los 6 gemelos espejan a su original en
+engine_scenario/shift_vol/shift_hed (assert duro); solo cambia la regla de salida.
+
+CONSUMO IMPLICITO (celda pif2hedexitvol) -- el volume_reduction_pct = 0 era una mentira:
+   escenario              palanca politica   consumo medio IMPLICITO
+   hed_reduction_10_rt          0%                  -5.30%
+   hed_reduction_25_rt          0%                 -13.25%
+   hed_reduction_50_rt          0%                 -26.49%
+   combined_v20_h50_rt        -20%                 -41.20%
+   (y las filas conservadoras implican EXACTAMENTE su palanca, +-1e-15 -> assert pasa)
+
+SMOKE TEST (ri_male, Road Injuries, 2022, 30-44, HED -50%):
+   conservador  PIF = 0.1763   consumo implicito:   0.00%
+   Ruiz-Tagle   PIF = 0.1800   consumo implicito: -21.61%
+HALLAZGO: la MISMA politica implica una caida del 21,6% del consumo medio bajo JRT y 0% bajo la
+conservadora, PERO EL PIF SOLO SE MUEVE +2,1%. En lesiones el riesgo lo manda el ATRACON, no el
+volumen. Es el espejo exacto del HALLAZGO 3 (11-jul): "una politica de SOLO VOLUMEN deja intacto
+casi todo el exceso por atracon en lesiones". Aqui: cambiar el volumen del ex-borracho casi no
+mueve el PIF de lesiones. Implicacion para el paper: en lesiones la eleccion lambda 0 vs 1 es casi
+IRRELEVANTE para las muertes evitadas, pero CAMBIA POR COMPLETO la contabilidad de gramos. No
+mezclar los dos mensajes.
+
+BRIDGE YPLL: el selector eligio YPLL_20260714.rds (NO el legacy).
+   attributable YPLL: 1188 filas, 23 ENFERMEDADES (antes: 3 causas de lesiones / 6 tablas), 0 joins
+   perdidos. Las 3 metricas (yll_hmd, yll_gbd, ypll_ref) SOBREVIVEN al join: el bridge pasa el
+   cache entero sin seleccionar columnas.
+   avoidable YPLL = NULL, porque necesita pif2_pif_results (el grid de ~314 min, NO corrido).
+
+### PROBES (empujando contra el cambio, no confirmandolo)
+
+1. RE-EJECUTAR la celda de wiring 2 veces mas -> 16 escenarios siguen siendo 16. IDEMPOTENTE.
+   (los guards `if (!"hed_exit_mix" %in% names(...))`, el filtro de scenario_id duplicado y
+   `if (!exists(".pif2_build_pif_args_base"))` hacen su trabajo; en un notebook re-ejecutar celdas
+   es lo normal, no un caso raro).
+2. WHITELIST end-to-end -> ver arriba. La vieja revienta, la nueva no.
+3. FORZAR AL SELECTOR AL LEGACY (escondiendo temporalmente el archivo con fecha) -> la celda
+   pif2yll3metrics SE DETIENE con:
+     "[YPLL-3] The artifact picker selected 'YPLL.rds', which is the LEGACY YPLL (different death
+      set, 3 injury causes, band 4 open at 60+). Expected a dated YPLL_YYYYMMDD.rds. Do not use
+      these numbers."
+   Archivo restaurado; el legacy quedo INTACTO.
+
+### NO CORRIDO (y hay que decirlo)
+
+- EL GRID DE ~314 MIN NO SE CORRIO. Por tanto:
+  * pif2_avoidable_ypll = NULL, y el check de cobertura de 23 enfermedades DENTRO de la celda
+    pif2yll3metrics (el `.nd < 20L`) NUNCA SE EJECUTO. Lo que SI se probo es que el YPLL
+    ATRIBUIBLE alcanza 23 enfermedades, que es la mitad sustantiva.
+  * los PIF de los 6 gemelos JRT no estan calculados para toda la grilla; solo la celda del smoke.
+- Las celdas pesadas de lesiones (~75 min) y Table 5 (~51 min) tampoco se corrieron.
+- Al re-correr el notebook completo hay que confirmar que avoidable_ypll_long pasa de 6 a 45 tablas.
+
+## 2026-07-14 18:25 - Hallazgos preliminares (caveman)
+
+Todo lo de abajo es PRELIMINAR.
+
+El grid de ~314 min NO se corrio.
+
+Ningun numero de aqui es publicable todavia.
+
+### Motor: el ex-borracho no perdia gramos
+
+El escenario HED quitaba el exceso de RR del atracon.
+
+No quitaba ni un gramo de alcohol.
+
+Los escenarios HED eran neutrales en volumen POR CONSTRUCCION.
+
+Nadie lo habia escrito.
+
+Ahora hay dos perillas: lambda (migra a la densidad NHED) y rho (volumen retenido).
+
+lambda = 0 es la regla conservadora. Es lo que el motor hacia.
+
+lambda = 1 es Ruiz-Tagle. El ex-HED bebe como un NHED promedio.
+
+Defaults = lambda 0, rho 1. Bit a bit igual a lo ya calculado. Verificado contra git HEAD.
+
+### La curva J rompe la intuicion
+
+Yo dije: lambda > 0 sube el PIF, el default es la cota conservadora.
+
+ES FALSO EN IHD E ICTUS ISQUEMICO.
+
+El RR_NHED masculino de IHD es PROTECTOR en TODO el tramo bajo 60 g/dia.
+
+Nadir RR = 0.78 a los 31 g/dia.
+
+Empujar al ex-HED hacia abajo lo pasea por el FONDO de la J.
+
+lambda = 1 puede BAJAR el PIF.
+
+La barrida de rho SUBE Y LUEGO CAE. No es monotona.
+
+En IHD/IS el default legacy NO es una cota. Es un punto interior.
+
+NO reportar una barrida (lambda, rho) como rango de un solo lado en esas causas.
+
+Para RR crecientes (canceres, higado, lesiones) la afirmacion SI vale.
+
+### La convencion JRT esta sesgada, y el sesgo tiene DOS partes
+
+Parte A: SELECCION.
+
+e0 - edad NO es la vida residual a esa edad.
+
+Quien ya llego a los 60 tiene mas vida por delante que e0 - 60.
+
+Hombre chileno, 2022: legacy 17.10 anios vs tabla de vida 21.30. Sesgo +25%.
+
+A los 65: 12.10 vs 17.44. Sesgo +44%.
+
+A los 20: sesgo 0%.
+
+Parte B: EL PISO EN CERO. (Lo vio el user. Pesa MAS.)
+
+pmax(e0 - edad, 0) anula a TODA muerte por encima de e0 (~77 H / ~82 M).
+
+Un hombre que muere a los 80 "perdio cero anios".
+
+La banda 4 del artefacto legacy es 60+ ABIERTA.
+
+De sus 26.045 muertes >65, el 51,5% aportan CERO.
+
+En ese tramo el legacy pierde el 66% de los anios reales.
+
+En la banda 4 completa pierde el 50%.
+
+POR QUE FUNCIONABA EN EL PAPER DE JRT: es de LESIONES. Muertes jovenes. Sesgo ~0%.
+
+POR QUE NO FUNCIONA AQUI: 23 causas CRONICAS. Masa en 45-65. El punto ciego cae encima de las muertes.
+
+La convencion es defendible para lesiones. Indefendible para cronicas.
+
+BUENA NOTICIA: el marco 15-65 CERRADO del pipeline es INMUNE a la parte B.
+
+Ninguna muerte de 60-65 supera e0. El piso NUNCA muerde. Verificado: 0 muertes lo tocan.
+
+### La tabla de vida chilena SI existia
+
+Estaba en el repo. Bajo __andres_control/ine_proyecciones_rebuild/.
+
+HMD (mortality.org), 1x1, protocolo v6, 12-ene-2026.
+
+e(x) por anio, sexo y EDAD SIMPLE. 1992-2024.
+
+Para el marco 15-65 / 2012-2024: 1.326 celdas, CERO NA.
+
+Se acabo el bloqueador de "no hay e(x) chilena".
+
+### Las tres autoridades de esperanza de vida NO coinciden
+
+HMD vs INE vs UN WPP.
+
+Hombres: HMD por debajo de ambas los 13 anios. Brecha vs INE: -0.41 (2012) a -1.05 (2024).
+
+Mujeres: HMD en medio. Debajo del INE, encima de WPP.
+
+COVID: HMD da el pozo MAS PROFUNDO. Hombres -2.12 anios (2019 a 2021). INE -2.00. WPP -1.75.
+
+Discrepan hasta ~1 anio en NIVEL y en la FORMA de la tendencia.
+
+Esto puede cambiar la DIRECCION de una tendencia 2012-2024.
+
+Nombrar la autoridad en metodos. Correr sensibilidad. NUNCA empalmar autoridades.
+
+### El death base reconcilia EXACTO
+
+Reconstruido desde microdatos DEIS con el mapa ICD del propio pipeline.
+
+1188 celdas. 1188 coincidencias exactas. Discrepancia MAXIMA = 0.
+
+117.949 muertes en ambos lados.
+
+La forma DENTADA se reproduce causa por causa (Laringe 36, Esofago 43, Mama 28).
+
+68 celdas de AAF NEGATIVO recuperan conteos POSITIVOS.
+
+La guarda abs(aaf) > 0 es CARGA ESTRUCTURAL. Con aaf > 0 desaparece Ischaemic Stroke entero.
+
+Este test es un stop() DURO. Es lo unico que protege contra la duplicacion del mapa ICD.
+
+### YPLL: tres metricas, tres numeros distintos
+
+23 causas. 2012-2024. 15-65.
+
+yll_hmd  = 6.992.690 anios  (tabla de vida chilena. NACIONAL.)
+
+yll_gbd  = 8.783.475 anios  (+26%. Referencia GBD 2019. COMPARABLE con Kilian/Lancet.)
+
+ypll_ref = 6.435.304 anios  (-8,0%. Convencion JRT. SESGADA.)
+
+NUNCA sumarlas.
+
+El -8% global esconde un -19,5% en la banda 4.
+
+Nunca reportar solo el agregado.
+
+### En lesiones, lambda casi no mueve el PIF
+
+ri_male, 2022, 30-44, HED -50%:
+
+conservador PIF = 0.1763. Consumo implicito: 0.00%.
+
+Ruiz-Tagle PIF = 0.1800. Consumo implicito: -21.61%.
+
+La MISMA politica implica -21,6% de consumo bajo JRT y 0% bajo la conservadora.
+
+Pero el PIF solo se mueve +2,1%.
+
+En lesiones el riesgo lo manda el ATRACON, no el volumen.
+
+Espejo del HALLAZGO 3 (11-jul).
+
+PARA EL PAPER: en lesiones la eleccion lambda 0 vs 1 es casi IRRELEVANTE para muertes evitadas.
+
+Pero CAMBIA POR COMPLETO la contabilidad de gramos.
+
+NO mezclar los dos mensajes.
+
+### volume_reduction_pct = 0 era una mentira
+
+hed_reduction_50_rt declara palanca de politica 0%.
+
+Implica -26,49% de consumo medio.
+
+La caida implicita NO es constante del escenario. Depende de p_hed, E[d_hed], E[d_nhed].
+
+Cambia por anio, sexo y tramo. No se puede escribir en el tribble.
+
+Se calcula POR CELDA. Ya esta en el notebook.
+
+### Bugs encontrados EJECUTANDO, no leyendo
+
+BUG MIO 1: la celda de consumo implicito usaba pif2_run_cfg. Se define DESPUES. Abortaba. Arreglado.
+
+BUG MIO 2: el smoke test usaba lican_male. Es nohed. Reventaba con "requiere p_hed>0". Arreglado a ri_male.
+
+35 de 45 salidas son nohed. Solo cap (ihd/is) y explicit (ri/injuries/violence) son HED-capable.
+
+BUG VIVO (NO TOCADO): .aaf_resolve_cell() cae a lookup POSICIONAL si falta la llave de anio.
+
+Devuelve el valor de OTRA CELDA. Finito. Plausible. Silencioso.
+
+resolve_hed_exit() ya NO delega en el. Pero neff / design_factor SI lo usan.
+
+Si algun spec de diseno no cubre todos los anios, TIENE EL MISMO BUG. Auditar aparte.
+
+YO ME EQUIVOQUE: dije que la blacklist vieja "igual funcionaba hoy".
+
+Probado al surface: REVIENTA con "los argumentos no fueron usados (hed_exit_mix = 1)".
+
+El reemplazo por whitelist NO era defensivo. Era NECESARIO.
+
+### Trampas operativas
+
+XLSX DE MORTALIDAD: 3 archivos matchean el regex. Ninguno con fecha embebida.
+
+La seleccion cae a FECHA DE MODIFICACION.
+
+Re-guardar Mortality Estimates_adam.xlsx cambiaria EN SILENCIO toda la base de mortalidad.
+
+Por eso build_ypll.R hard-codea la ruta.
+
+YPLL.rds LEGACY: se conserva (decision del user). NO USAR.
+
+Es OTRO death set. Mapa ICD pre-Shield. 3 causas. Banda 60+ abierta. Script generador ausente.
+
+El selector prefiere fecha embebida. El nuevo la tiene, el legacy no. El nuevo gana.
+
+La celda pif2yll3metrics SE DETIENE si el selector regresa al legacy. Probado.
+
+MAPA ICD DUPLICADO: ypll_icd_defs.R copia el mapa de expand_pif.ipynb (un .ipynb no se puede source()).
+
+Si el notebook cambia su mapa, el YPLL DIVERGE EN SILENCIO.
+
+El unico guardian es test_ypll_death_base.R. Correrlo siempre que cambie el bundle o el xlsx.
+
+edad_tipo: 109 muertes infantiles pasan como adultas. 4 en causa modelada (LRI via P23).
+
+0,0034% de las muertes. YA ESTAN en los conteos del pipeline. Por eso el gate sale exacto.
+
+"Corregirlo" solo en el YPLL ROMPE el 1188/1188. Arreglar aguas arriba o no arreglar.
+
+Hay una muerte registrada a los 121 ANIOS en el parquet. Implausible. Mirarlo.
+
+### Que falta
+
+Correr el grid (~314 min + los 6 gemelos).
+
+Confirmar que avoidable_ypll_long pasa de 3 a 23 enfermedades y de 6 a 45 tablas.
+
+El check de cobertura DENTRO de pif2yll3metrics nunca se ejecuto (necesita pif2_pif_results).
+
+Sensibilidad de esperanza de vida (INE vs HMD vs WPP).
+
+Auditar el fall-through de .aaf_resolve_cell en neff / design_factor.
+
+Arreglar volume_reduction_pct en las tablas que se publiquen.
