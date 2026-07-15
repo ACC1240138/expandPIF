@@ -7218,3 +7218,231 @@ Sensibilidad de esperanza de vida (INE vs HMD vs WPP).
 Auditar el fall-through de .aaf_resolve_cell en neff / design_factor.
 
 Arreglar volume_reduction_pct en las tablas que se publiquen.
+
+### PIF Table 5 PUC: comparacion arreglada para correr el MISMO experimento
+
+Fecha/hora: 2026-07-15 11:27:45 -04:00
+
+PROBLEMA: el Table 5 viejo guardado (`pif2_pif_results_table5_full_20260712.rds`) tenia 10 escenarios.
+
+El PIF principal full mas nuevo (`pif2_pif_results_full_20260715.rds`) tiene 16.
+
+Los 6 que faltan son los gemelos Ruiz-Tagle `_rt`: lambda = 1.
+
+No comparar Table 5 viejo contra el main nuevo. No es el mismo experimento.
+
+ARREGLO PROPUESTO PARA `pif2-table5-run`:
+
+1. Cargar el ultimo `aaf_table5_result_YYYYMMDD.rds` con `pif2_read_latest_artifact()`.
+
+Ese AAF cacheado es SOLO para validar la base / PAF. No reemplaza el calculo PIF.
+
+PIF necesita riesgo observado Y contrafactual en los mismos sorteos; un AAF resumido no alcanza.
+
+2. Correr `pif2_run_pif_grid()` con:
+
+`spec = pif2_table5_output_spec`
+
+PERO exactamente el mismo:
+
+`scenarios = pif2_scenario_grid`
+
+`exposure = pif2_exposure_inputs`
+
+`unc = pif2_aaf_uncertainty`
+
+`mc = pif2_aaf_mc`
+
+`years/groups/run_cfg = pif2_run_cfg`
+
+La unica diferencia real debe ser RR:
+
+WHO/Adam -> Table 5 PUC para IHD e Ischaemic Stroke.
+
+3. `pif2_scenario_grid` ya trae 10 filas conservadoras (lambda = 0) + 6 `_rt` (lambda = 1).
+
+Baseline y volumen puro NO se duplican: no sale nadie de HED; lambda no hace nada.
+
+4. Mantener la arquitectura de tiempo largo del main:
+
+`outer_parallel = TRUE`
+
+`inner_parallel = FALSE`
+
+`n_cores = pif2_aaf_mc$n_cores`
+
+Esto usa el MISMO PSOCK + `clusterApplyLB()` por celda PIF. No anidar clusters.
+
+5. Guardar DOS artefactos fechados Table 5:
+
+`pif2_pif_results_table5_full_YYYYMMDD.rds`
+
+`pif2_pif_audit_table5_full_YYYYMMDD.rds`
+
+Adjuntar a resultados: `rr_source = "table5_puc"`, `hed_exit_mix`, `hed_exit_shift`, `exit_rule` y `scale`.
+
+6. Antes de comparar WHO vs PUC, parar si no coincide firma:
+
+escenarios, anios, bandas, `n_sim`.
+
+Main verificado: 16 escenarios, `n_sim = 10000`.
+
+Table 5 nuevo esperado: 4 tablas x 16 escenarios x 7 anios x 4 bandas = 1792 filas.
+
+7. Sacar del chunk la recomputacion cara de AAF de validacion:
+
+`aaf_confint(...)`
+
+`compute_cv_aaf_from_registry(...)`
+
+Reemplazar por chequeos de estructura, cobertura, finitud y orden de IC del `aaf_table5_result` cacheado.
+
+NO afirmar direccion lambda = 1 vs lambda = 0 en IHD/IS.
+
+Sus RR son J-curve cardioprotectora; que lambda mueva PIF hacia arriba o abajo puede ser real.
+
+ESTADO AL CERRAR ESTA NOTA: se preparo el bloque de reemplazo; NO se edito `expand_pif2.ipynb` en esta sesion y NO se ejecuto el grid Table 5 largo.
+
+PRECONDICION: hoy no habia ningun `aaf_table5_result_*.rds` en `__andres_control/`.
+
+Primero generar/copiar ese cache. Despues correr el nuevo Table 5 full.
+
+# 2026-07-15 14: bug edad_tipo en mort24 (expand_pif.ipynb cell 13)
+
+Date: 2026-07-15 (hora local ~14h)
+
+## Caveman
+
+Archivo 2024 crudo DEIS: columna edad_cant NO siempre en anios. Otra columna edad_tipo dice unidad.
+edad_tipo==1 => anios. 2=meses, 3=dias, 4=horas, 0=desconocido.
+
+Pipeline nunca mira edad_tipo. Filtro actual en mort24 = `dplyr::filter(edad_cant <=65)`.
+Bebe muerto a "20 horas" => edad_cant=20 => pasa filtro 15-65 como adulto de 20.
+
+## Numeros reales (verificado read-only sobre DEFUNCIONES_FUENTE_DEIS_2024_2026_09062026.parquet)
+
+Distribucion edad_tipo: 0=16, 1=303024, 2=521, 3=817, 4=859. Base total 2024 = 305237.
+Filas que pasan marco 15-65 (2024) HOY (buggy): 31915.
+Con arreglo (edad_tipo==1): 31806.
+Botadas por el arreglo: 109 (88 en dias tipo3, 21 en horas tipo4).
+De esas 109, en causa modelada: 4, TODAS P23 (LRI, porque P23 esta en lri_codes).
+= 0.0034% de la base ~117949 muertes 15-65.
+
+Coincide digito a digito con el comentario "PRE-EXISTING DEFECT" en ypll_icd_defs.R:192-201.
+
+## Fix (una linea, solo mort24; mort21 ya viene limpio de parquet pre-procesado)
+
+En expand_pif.ipynb cell 13 (label mortality-consolidate-and-update), carga de mort24:
+ANTES:  dplyr::filter(edad_cant <=65) |>
+DESPUES: dplyr::filter(edad_tipo == 1, edad_cant <=65) |>   # edad_tipo==1 => AÑOS; excluye lactantes dias/horas + edad desconocida
+
+NO tocar mort21 (DEFUNCIONES_DEIS_12_23_15plus.parquet ya tiene age limpio).
+El arreglo tambien saca los 16 edad_tipo==0 (desconocido), correcto; neto botado sigue siendo 109.
+
+## Efecto aguas abajo
+
+Base modelada baja 4 muertes (LRI 2024): ~117949 -> ~117945.
+Match 1188/1188 y assert de integralidad en ypll_icd_defs.R se recalculan contra nuevos totales: ESPERADO.
+Hay que RE-CORRER el notebook completo, no solo la celda, para que aguas abajo vuelva a cuadrar.
+Tasas std y PIF cambian una fraccion imperceptible (0.0034%) pero cambian.
+
+## Estado al cerrar
+
+Diagnostico read-only corrido (scratchpad/check_edad_tipo.R). NO se edito el notebook (regla AGENTS.md: no notebooks sin permiso explicito). Usuario tiene la linea exacta.
+
+# 2026-07-15 12:22 -04: creado expand_pif3.ipynb para figuras reproducibles
+
+Fecha/hora: 2026-07-15 12:22:16 -04 (America/Santiago)
+
+## CAVEMAN
+
+HECHO: se creo `__andres_control/expand_pif3.ipynb` como tercer notebook, solo para reporte y figuras.
+
+NO vuelve a correr ENPG, mortalidad, AAF, RR ni el motor PIF.
+
+Usa resultados reales ya guardados por `expand_pif2.ipynb`.
+
+## Entradas seleccionadas por fecha dentro del nombre
+
+1. `__andres_control/pif2_pif_results_full_20260715.rds`
+   - 20160 filas x 24 columnas.
+   - 23 enfermedades, 2 sexos, 4 bandas de edad, 7 anos PIF y 16 escenarios.
+
+2. `__andres_control/pif2_injuries_fulltest_results_20260715.rds`
+   - 2688 filas x 24 columnas.
+   - Grid independiente de injuries, con 6 tablas y 16 escenarios.
+
+3. `Mortalidad/Matrices/YPLL_20260714.rds`
+   - 2197 filas x 9 columnas.
+   - Incluye `deaths`, `yll_hmd`, `yll_gbd`, `ypll_ref` y el alias `ypll = yll_hmd`.
+
+El selector solo acepta `stem_YYYYMMDD.rds`, prefiere la fecha embebida y muestra ruta, patron, numero de candidatos y archivo elegido.
+
+El `YPLL.rds` legacy sin fecha queda excluido de manera intencional.
+
+## Metricas explicadas y calculadas
+
+- PIF = cambio proporcional del riesgo poblacional causa-especifico bajo el contrafactual.
+- Muertes evitables esperadas = `deaths * pif`.
+- YLL evitables = `YLL total de la causa * pif`.
+- IMPORTANTE: NO se usa `YLL atribuible * PIF`; eso volveria a multiplicar por AAF y subestimaria el resultado.
+- PIF ponderado por carga = suma de carga evitable / suma de carga observada en las celdas resumidas.
+- `yll_hmd`, `yll_gbd` y `ypll_ref` se mantienen como tres metricas separadas. Nunca se suman.
+- PIF negativos se conservan. No se truncan a cero.
+- Escenarios HED no aplicables quedan como `NA` estructural, no como efecto cero.
+- Limites agregados son sumas de limites Monte Carlo celda por celda: se llaman envelopes descriptivos, NO nuevos IC conjuntos del agregado.
+
+## Figuras creadas
+
+1. Tendencia 2012-2024 del PIF ponderado por HMD-YLL para reducciones de volumen de 10%, 20% y 30%, por sexo.
+2. PIF causa-especifico en 2024 para reduccion de volumen de 30%, con negativos visibles.
+3. Muertes evitables esperadas y HMD-YLL evitables en 2024, mismas 12 causas principales.
+4. Sensibilidad del total evitable segun HMD YLL, GBD YLL o YPLL por edad de referencia.
+5. Injuries: reducciones HED 10%, 25% y 50%, comparando salida ex-HED conservadora vs redistribucion JRT.
+6. Figura suplementaria S1: matriz enfermedad x escenario mostrando aplicable vs no aplicable.
+
+Ningun objeto `ggplot` lleva `title`, `subtitle` ni `caption`.
+
+Titulos, captions, definiciones y cautelas estan afuera del grafico, en celdas Markdown.
+
+Estilo: paleta sobria y distinguible, fondo limpio, serif portable que corresponde a Times New Roman en Windows, tamanos fijos de revista.
+
+Cada figura se exporta como TIFF 600 dpi + PDF vectorial en:
+
+`__andres_control/figures_expand_pif3/`
+
+Total: 6 figuras x 2 formatos = 12 archivos.
+
+## Validacion corrida
+
+- Notebook JSON valido: 30 celdas, 14 celdas R, 0 outputs heredados.
+- Todas las celdas R parsean.
+- Cada chunk empieza con `.t0` y reporta minutos.
+- No hay lineas vacias dentro del codigo.
+- Ejecucion secuencial limpia desde R 4.4.1 con warnings convertidos en errores: PASO.
+- 11/11 chequeos de artefactos: PASARON.
+- 8400 filas PIF aplicables finitas.
+- 11760 filas no aplicables con PIF/limites `NA`.
+- 226 PIF negativos conservados.
+- Baseline exactamente cero.
+- Orden `pif_low <= pif <= pif_up` correcto.
+- 23 enfermedades coinciden exactamente entre PIF y YPLL.
+- `ypll` coincide exactamente con `yll_hmd`.
+- 2688/2688 filas injuries coinciden con el grid PIF full; desviacion maxima = 0.
+- Join final: 19008 filas full y 2688 filas injuries; anos 2012, 2014, 2016, 2018, 2020, 2022 y 2024.
+- Las 6 figuras se inspeccionaron visualmente: sin clipping importante y etiquetas legibles.
+
+SHA256 del notebook validado:
+
+`9FF01658B990FA16EC89C09D9E5B153BADF85393E194050130489E1AA5E742DA`
+
+## Estado al cerrar
+
+CREADOS:
+
+- `__andres_control/expand_pif3.ipynb`
+- `__andres_control/figures_expand_pif3/` con 12 exports.
+
+NO se editaron `expand_pif.ipynb` ni `expand_pif2.ipynb` durante esta creacion.
+
+Esto valida el notebook contra los RDS reales guardados, pero NO equivale a revalidar el pipeline completo desde microdatos crudos.

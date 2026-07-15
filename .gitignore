@@ -18,15 +18,17 @@
 desktop.ini
 **/desktop.ini
 
-
 # Notebook and render metadata it currently references
 !__andres_control/expand_pif.ipynb
 !__andres_control/expand_pif2.ipynb
+!__andres_control/expand_pif3.ipynb
 !__andres_control/expand_pif.html
 !__andres_control/expand_pif2.html
+!__andres_control/expand_pif3.html
 !__andres_control/expand_pif_pipeline_detailed.bpmn
 !expand_pif.html
 !expand_pif2.html
+!expand_pif3.html
 !__andres_control/references.bib
 !__andres_control/codex_handoff_adam_rr_full_override_caveman.md
 
@@ -84,7 +86,11 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !__andres_control/aaf_nested_by_disease_*.rdsv
 !__andres_control/ine_basedatos.xlsx
 !__andres_control/ine_proyecciones_2012_2024.xlsx
-!__andres_control/Mortality Estimates WHO 2024.xlsx
+# [2026-07-15] glob covers the DATED export "Mortality Estimates WHO 2024_YYYYMMDD.xlsx"
+# that expand_pif.ipynb now writes (does NOT match _adam/_ags -- those stay ignored).
+!__andres_control/Mortality Estimates WHO 2024*.xlsx
+# Dated Table 5 AAF result object written by expand_pif.ipynb; regenerated on each run.
+!__andres_control/aaf_table5_result_*.rds
 !__andres_control/Figure*.png
 !__andres_control/__andres_control/Figure*.png
 
@@ -125,3 +131,49 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !__andres_control/expand_pif2.qmd
 !__andres_control/expand_pif2_files/
 !__andres_control/expand_pif2_files/**
+
+# =============================================================================
+# [2026-07-14] HED-exit knobs + YPLL/YLL rebuild -- objects expand_pif2 now needs.
+# Without these, on another machine the notebook runs but the YPLL section goes
+# inert (pif2_ypll_cache = NULL), and the YPLL cannot be rebuilt.
+# =============================================================================
+
+# YPLL cache read by the notebook's artifact picker at runtime.
+# Dated file = the active 23-cause / 3-metric cache. YPLL.rds = legacy (kept by the
+# user's decision, not used; the picker prefers the embedded date so the dated one
+# always wins). Tracking the legacy also protects it from an accidental `git clean`.
+# Glob covers dated rebuilds (YPLL_YYYYMMDD.rds); YPLL.rds is the legacy (kept).
+!Mortalidad/Matrices/YPLL_*.rds
+!Mortalidad/Matrices/YPLL.rds
+
+# Rebuild toolchain (so the YPLL can be regenerated from source on any machine).
+# The death microdata (DEFUNCIONES_*.parquet), the AAF bundle and the mortality xlsx
+# they consume are already whitelisted above.
+!__andres_control/build_ypll.R
+!__andres_control/ypll_icd_defs.R
+!__andres_control/life_tables_20260714.R
+!__andres_control/test_ypll_death_base.R
+!__andres_control/test_hed_exit_knobs.R
+!__andres_control/pif2_hed_exit_chunk_PROPUESTA.md
+
+# Chile HMD period life tables (mortality.org, v6, 2026-01-12), read by
+# life_tables_20260714.R. The 1x1 (single year of age) are the ones actually used;
+# the 5x1 (abridged) are kept for completeness.
+!__andres_control/ine_proyecciones_rebuild/mltper_1x1.txt
+!__andres_control/ine_proyecciones_rebuild/fltper_1x1.txt
+!__andres_control/ine_proyecciones_rebuild/mltper_5x1.txt
+!__andres_control/ine_proyecciones_rebuild/fltper_5x1.txt
+
+# =============================================================================
+# expand_pif3.ipynb inputs and outputs
+# =============================================================================
+
+# Inputs: dated artifacts selected by the notebook's artifact picker
+!__andres_control/pif2_pif_results_*.rds
+!__andres_control/pif2_injuries_fulltest_results_*.rds
+!Mortalidad/Matrices/YPLL_*.rds
+
+# Outputs: publication-oriented TIFF/PDF figures exported by pif3_save_plot()
+!__andres_control/figures_expand_pif3/
+!__andres_control/figures_expand_pif3/**
+!__andres_control/tables_expand_pif3/**

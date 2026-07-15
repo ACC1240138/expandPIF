@@ -1,0 +1,605 @@
+"Cause","Cause group","Scenario","Age group (years)","Total expected avoidable deaths","Lower 95% uncertainty limit","Upper 95% uncertainty limit","Contributing cells"
+"Acute Pancreatitis","Other causes","Baseline","15-29",0,0,0,13
+"Acute Pancreatitis","Other causes","Baseline","30-44",0,0,0,14
+"Acute Pancreatitis","Other causes","Baseline","45-59",0,0,0,14
+"Acute Pancreatitis","Other causes","Baseline","60-65",0,0,0,14
+"Breast Cancer","Cancer","Baseline","15-29",0,0,0,7
+"Breast Cancer","Cancer","Baseline","30-44",0,0,0,7
+"Breast Cancer","Cancer","Baseline","45-59",0,0,0,7
+"Breast Cancer","Cancer","Baseline","60-65",0,0,0,7
+"Colon and rectum Cancer","Cancer","Baseline","15-29",0,0,0,14
+"Colon and rectum Cancer","Cancer","Baseline","30-44",0,0,0,14
+"Colon and rectum Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Colon and rectum Cancer","Cancer","Baseline","60-65",0,0,0,14
+"DM2","Other causes","Baseline","15-29",0,0,0,14
+"DM2","Other causes","Baseline","30-44",0,0,0,14
+"DM2","Other causes","Baseline","45-59",0,0,0,14
+"DM2","Other causes","Baseline","60-65",0,0,0,14
+"Epilepsy","Neuropsychiatric","Baseline","15-29",0,0,0,14
+"Epilepsy","Neuropsychiatric","Baseline","30-44",0,0,0,14
+"Epilepsy","Neuropsychiatric","Baseline","45-59",0,0,0,14
+"Epilepsy","Neuropsychiatric","Baseline","60-65",0,0,0,14
+"HIV","Other causes","Baseline","15-29",0,0,0,14
+"HIV","Other causes","Baseline","30-44",0,0,0,14
+"HIV","Other causes","Baseline","45-59",0,0,0,14
+"HIV","Other causes","Baseline","60-65",0,0,0,14
+"Hypertensive Heart Disease","Cardiovascular","Baseline","15-29",0,0,0,12
+"Hypertensive Heart Disease","Cardiovascular","Baseline","30-44",0,0,0,14
+"Hypertensive Heart Disease","Cardiovascular","Baseline","45-59",0,0,0,14
+"Hypertensive Heart Disease","Cardiovascular","Baseline","60-65",0,0,0,14
+"Intentional Injuries","Injuries","Baseline","15-29",0,0,0,14
+"Intentional Injuries","Injuries","Baseline","30-44",0,0,0,14
+"Intentional Injuries","Injuries","Baseline","45-59",0,0,0,14
+"Intentional Injuries","Injuries","Baseline","60-65",0,0,0,14
+"Intracerebral Haemorrhage","Cardiovascular","Baseline","15-29",0,0,0,14
+"Intracerebral Haemorrhage","Cardiovascular","Baseline","30-44",0,0,0,14
+"Intracerebral Haemorrhage","Cardiovascular","Baseline","45-59",0,0,0,14
+"Intracerebral Haemorrhage","Cardiovascular","Baseline","60-65",0,0,0,14
+"Ischaemic Heart Disease","Cardiovascular","Baseline","15-29",0,0,0,14
+"Ischaemic Heart Disease","Cardiovascular","Baseline","30-44",0,0,0,14
+"Ischaemic Heart Disease","Cardiovascular","Baseline","45-59",0,0,0,14
+"Ischaemic Heart Disease","Cardiovascular","Baseline","60-65",0,0,0,14
+"Ischaemic Stroke","Cardiovascular","Baseline","15-29",0,0,0,14
+"Ischaemic Stroke","Cardiovascular","Baseline","30-44",0,0,0,14
+"Ischaemic Stroke","Cardiovascular","Baseline","45-59",0,0,0,14
+"Ischaemic Stroke","Cardiovascular","Baseline","60-65",0,0,0,14
+"Larynx Cancer","Cancer","Baseline","30-44",0,0,0,9
+"Larynx Cancer","Cancer","Baseline","45-59",0,0,0,13
+"Larynx Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Liver Cancer","Cancer","Baseline","15-29",0,0,0,12
+"Liver Cancer","Cancer","Baseline","30-44",0,0,0,14
+"Liver Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Liver Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Liver Cirrhosis","Other causes","Baseline","15-29",0,0,0,13
+"Liver Cirrhosis","Other causes","Baseline","30-44",0,0,0,14
+"Liver Cirrhosis","Other causes","Baseline","45-59",0,0,0,14
+"Liver Cirrhosis","Other causes","Baseline","60-65",0,0,0,14
+"Lower Respiratory Infection","Other causes","Baseline","15-29",0,0,0,14
+"Lower Respiratory Infection","Other causes","Baseline","30-44",0,0,0,14
+"Lower Respiratory Infection","Other causes","Baseline","45-59",0,0,0,14
+"Lower Respiratory Infection","Other causes","Baseline","60-65",0,0,0,14
+"Oesophagus Cancer","Cancer","Baseline","15-29",0,0,0,3
+"Oesophagus Cancer","Cancer","Baseline","30-44",0,0,0,12
+"Oesophagus Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Oesophagus Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Oral Cavity and Pharynx Cancer","Cancer","Baseline","15-29",0,0,0,7
+"Oral Cavity and Pharynx Cancer","Cancer","Baseline","30-44",0,0,0,14
+"Oral Cavity and Pharynx Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Oral Cavity and Pharynx Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Other Pharyngeal Cancer","Cancer","Baseline","15-29",0,0,0,4
+"Other Pharyngeal Cancer","Cancer","Baseline","30-44",0,0,0,8
+"Other Pharyngeal Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Other Pharyngeal Cancer","Cancer","Baseline","60-65",0,0,0,12
+"Pancreatic Cancer","Cancer","Baseline","15-29",0,0,0,6
+"Pancreatic Cancer","Cancer","Baseline","30-44",0,0,0,14
+"Pancreatic Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Pancreatic Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Road Injuries","Injuries","Baseline","15-29",0,0,0,14
+"Road Injuries","Injuries","Baseline","30-44",0,0,0,14
+"Road Injuries","Injuries","Baseline","45-59",0,0,0,14
+"Road Injuries","Injuries","Baseline","60-65",0,0,0,14
+"Stomach Cancer","Cancer","Baseline","15-29",0,0,0,14
+"Stomach Cancer","Cancer","Baseline","30-44",0,0,0,14
+"Stomach Cancer","Cancer","Baseline","45-59",0,0,0,14
+"Stomach Cancer","Cancer","Baseline","60-65",0,0,0,14
+"Tuberculosis","Other causes","Baseline","15-29",0,0,0,14
+"Tuberculosis","Other causes","Baseline","30-44",0,0,0,14
+"Tuberculosis","Other causes","Baseline","45-59",0,0,0,14
+"Tuberculosis","Other causes","Baseline","60-65",0,0,0,14
+"Unintentional Injuries","Injuries","Baseline","15-29",0,0,0,14
+"Unintentional Injuries","Injuries","Baseline","30-44",0,0,0,14
+"Unintentional Injuries","Injuries","Baseline","45-59",0,0,0,14
+"Unintentional Injuries","Injuries","Baseline","60-65",0,0,0,14
+"Acute Pancreatitis","Other causes","Volume -10%","15-29",0.871701502464686,0.271878676288565,2.201110945324,13
+"Acute Pancreatitis","Other causes","Volume -10%","30-44",4.12518289721614,1.44475748777688,9.31669245280017,14
+"Acute Pancreatitis","Other causes","Volume -10%","45-59",7.84009726436599,2.49834078988769,18.656147554571,14
+"Acute Pancreatitis","Other causes","Volume -10%","60-65",2.3371365390347,0.669438001010564,6.1614123161131,14
+"Breast Cancer","Cancer","Volume -10%","15-29",0.0854473216366227,0.06923509115742,0.104084920660822,7
+"Breast Cancer","Cancer","Volume -10%","30-44",1.91001884512137,1.55119154238337,2.31803408269459,7
+"Breast Cancer","Cancer","Volume -10%","45-59",4.50602288240859,3.64311894270071,5.50227336506517,7
+"Breast Cancer","Cancer","Volume -10%","60-65",1.6384795906116,1.27161425132667,2.07618077993596,7
+"Colon and rectum Cancer","Cancer","Volume -10%","15-29",0.317995416294166,0.204036810857114,0.460177481979597,14
+"Colon and rectum Cancer","Cancer","Volume -10%","30-44",3.10008424525798,1.9976512571776,4.45206742608518,14
+"Colon and rectum Cancer","Cancer","Volume -10%","45-59",11.9416770620103,7.47541306657003,17.4849709380469,14
+"Colon and rectum Cancer","Cancer","Volume -10%","60-65",6.70118980207038,4.01708496139863,10.2605447814563,14
+"DM2","Other causes","Volume -10%","15-29",-0.00972104481501979,-0.0834329389293856,0.0911097157390642,14
+"DM2","Other causes","Volume -10%","30-44",-0.0120663794159214,-0.376686626155143,0.466361506635443,14
+"DM2","Other causes","Volume -10%","45-59",-0.0994101385738696,-2.03731243486591,2.42788287123313,14
+"DM2","Other causes","Volume -10%","60-65",-0.299292528441745,-1.71539274140393,1.48585951192407,14
+"Epilepsy","Neuropsychiatric","Volume -10%","15-29",2.66790227004933,1.75743583693702,3.8633326025075,14
+"Epilepsy","Neuropsychiatric","Volume -10%","30-44",4.87600227863441,3.24267398072329,6.96201826946863,14
+"Epilepsy","Neuropsychiatric","Volume -10%","45-59",7.17373864446257,4.60055751981421,10.4653013502047,14
+"Epilepsy","Neuropsychiatric","Volume -10%","60-65",2.07428592203572,1.25977325829831,3.19250157285222,14
+"HIV","Other causes","Volume -10%","15-29",0.823475260210851,0.436203968249447,1.30011980107577,14
+"HIV","Other causes","Volume -10%","30-44",4.27364326201539,2.31807965597038,6.60636645480877,14
+"HIV","Other causes","Volume -10%","45-59",3.56411349697703,1.99254542532661,5.40583617908687,14
+"HIV","Other causes","Volume -10%","60-65",0.400190130352912,0.18738387977397,0.66546498841947,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -10%","15-29",0.133604023911517,0.0933289217263075,0.180248149231725,12
+"Hypertensive Heart Disease","Cardiovascular","Volume -10%","30-44",1.34408589188874,0.96462554663109,1.77570198534714,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -10%","45-59",7.60070223490058,5.47681406741771,9.98482297186292,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -10%","60-65",6.26523570994028,4.30141072863871,8.56781674239116,14
+"Intentional Injuries","Injuries","Volume -10%","15-29",10.603556422477,4.90134255181266,17.4633537080976,14
+"Intentional Injuries","Injuries","Volume -10%","30-44",13.0231911216878,6.01480420565933,21.1263706929585,14
+"Intentional Injuries","Injuries","Volume -10%","45-59",8.38988114956025,3.80603161637097,13.9228698408607,14
+"Intentional Injuries","Injuries","Volume -10%","60-65",1.60553433019048,0.732015002466222,2.72344106137171,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -10%","15-29",1.23870217234042,0.617901218242361,2.19055971787148,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -10%","30-44",6.52858361482207,3.39985468649383,11.0595196592365,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -10%","45-59",20.1756254284493,10.2642242314547,34.929349553584,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -10%","60-65",8.76365766659936,4.32194362005201,15.6661198920789,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -10%","15-29",0.011378618353407,-0.230580356056322,0.511495231288902,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -10%","30-44",0.177786624461152,-1.42965675552321,3.43578575492356,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -10%","45-59",3.38554432077091,-6.63966108683151,19.0490998723466,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -10%","60-65",-0.792878767685415,-7.13817512613184,8.6625787758447,14
+"Ischaemic Stroke","Cardiovascular","Volume -10%","15-29",0.0973346506862524,-0.013559063975362,0.868442549494088,14
+"Ischaemic Stroke","Cardiovascular","Volume -10%","30-44",0.512345534044888,0.0388872664929318,1.89380546578738,14
+"Ischaemic Stroke","Cardiovascular","Volume -10%","45-59",3.2034565059421,0.3932187242076,9.91017970801972,14
+"Ischaemic Stroke","Cardiovascular","Volume -10%","60-65",2.37787587348212,0.200527096752473,7.12845289844898,14
+"Larynx Cancer","Cancer","Volume -10%","30-44",0.198319603948305,0.131017864096027,0.2778579257662,9
+"Larynx Cancer","Cancer","Volume -10%","45-59",2.12606979521594,1.36398443415647,3.04908925092647,13
+"Larynx Cancer","Cancer","Volume -10%","60-65",1.69900778699359,1.00971724455586,2.57634552558745,14
+"Liver Cancer","Cancer","Volume -10%","15-29",0.0486886376324231,0.0216002916591541,0.083868627322284,12
+"Liver Cancer","Cancer","Volume -10%","30-44",0.304805368949921,0.134970560706203,0.525474601857801,14
+"Liver Cancer","Cancer","Volume -10%","45-59",2.38953868337189,1.02748229028851,4.21869453267117,14
+"Liver Cancer","Cancer","Volume -10%","60-65",1.79276616515247,0.752045058765818,3.29067080418297,14
+"Liver Cirrhosis","Other causes","Volume -10%","15-29",2.72356951951694,1.41445818795593,4.38019021030391,13
+"Liver Cirrhosis","Other causes","Volume -10%","30-44",81.2351277766242,42.6457294718281,129.803615885429,14
+"Liver Cirrhosis","Other causes","Volume -10%","45-59",375.098245491338,184.713486941975,614.569851811451,14
+"Liver Cirrhosis","Other causes","Volume -10%","60-65",100.748268500583,41.9723701536052,189.368795384581,14
+"Lower Respiratory Infection","Other causes","Volume -10%","15-29",0.51034097884357,0.0944033004457565,1.05389139312589,14
+"Lower Respiratory Infection","Other causes","Volume -10%","30-44",2.26475072817902,0.421427946652856,4.69025571637396,14
+"Lower Respiratory Infection","Other causes","Volume -10%","45-59",6.49712622396932,1.11406378106999,13.830181973995,14
+"Lower Respiratory Infection","Other causes","Volume -10%","60-65",3.23426781538879,0.580627624363201,6.95000095808013,14
+"Oesophagus Cancer","Cancer","Volume -10%","15-29",0.0365682740871844,0.0275763952305919,0.0461665092316617,3
+"Oesophagus Cancer","Cancer","Volume -10%","30-44",0.509057172961119,0.386076495961181,0.637335378518031,12
+"Oesophagus Cancer","Cancer","Volume -10%","45-59",5.39969243350104,3.98154421634429,6.82504040006953,14
+"Oesophagus Cancer","Cancer","Volume -10%","60-65",4.25023553431323,2.80470120165374,5.86780183397263,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -10%","15-29",0.262588285083273,0.182966778167218,0.350654462314468,7
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -10%","30-44",1.36877136405218,0.939419242517733,1.84856163918704,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -10%","45-59",7.67051585651574,5.1095198016144,10.4931450304753,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -10%","60-65",4.09512098534555,2.44464333276148,6.06722808112895,14
+"Other Pharyngeal Cancer","Cancer","Volume -10%","15-29",0.140950420426817,0.0992262128429761,0.189214225275388,4
+"Other Pharyngeal Cancer","Cancer","Volume -10%","30-44",0.479423109856417,0.326679610756962,0.651549022449845,8
+"Other Pharyngeal Cancer","Cancer","Volume -10%","45-59",3.22369980769305,2.14794622083168,4.40966198239497,14
+"Other Pharyngeal Cancer","Cancer","Volume -10%","60-65",2.92455908930448,1.74423354583773,4.32511707734267,12
+"Pancreatic Cancer","Cancer","Volume -10%","15-29",0.013122208594242,0.00674699004653979,0.0203278415465909,6
+"Pancreatic Cancer","Cancer","Volume -10%","30-44",0.27348986540422,0.139708395767366,0.423577658625145,14
+"Pancreatic Cancer","Cancer","Volume -10%","45-59",2.00809048172913,1.00233532679248,3.14371850315044,14
+"Pancreatic Cancer","Cancer","Volume -10%","60-65",1.26886383701762,0.626432492619595,2.05020362332187,14
+"Road Injuries","Injuries","Volume -10%","15-29",11.9315694851819,7.27219422433757,17.3706928493679,14
+"Road Injuries","Injuries","Volume -10%","30-44",13.4620735411583,8.26877884672888,19.3211833179248,14
+"Road Injuries","Injuries","Volume -10%","45-59",11.7169837616166,7.05764618748125,17.1706419890478,14
+"Road Injuries","Injuries","Volume -10%","60-65",3.01597995054601,1.78075530355986,4.5650062285221,14
+"Stomach Cancer","Cancer","Volume -10%","15-29",0.0680382205945321,0.0160355541906149,0.126538502138163,14
+"Stomach Cancer","Cancer","Volume -10%","30-44",0.928236562685694,0.258767147035394,1.65696276383185,14
+"Stomach Cancer","Cancer","Volume -10%","45-59",6.45777809596972,2.88021934698892,10.2619620567596,14
+"Stomach Cancer","Cancer","Volume -10%","60-65",3.3744173425597,0.854761848359041,6.31100551847311,14
+"Tuberculosis","Other causes","Volume -10%","15-29",1.46974875246789,0.189110343810006,4.82641611746514,14
+"Tuberculosis","Other causes","Volume -10%","30-44",5.63276976263957,0.722100917953055,18.4701707015768,14
+"Tuberculosis","Other causes","Volume -10%","45-59",16.751034214856,1.76775235229932,59.8598018701456,14
+"Tuberculosis","Other causes","Volume -10%","60-65",5.1684194638247,0.594038883170332,19.0243960298032,14
+"Unintentional Injuries","Injuries","Volume -10%","15-29",5.51250060452724,2.58432358725434,8.92777418402163,14
+"Unintentional Injuries","Injuries","Volume -10%","30-44",8.80402642702876,4.12181795516149,14.0552246938019,14
+"Unintentional Injuries","Injuries","Volume -10%","45-59",9.27323999843867,4.25735189626479,15.0867171838888,14
+"Unintentional Injuries","Injuries","Volume -10%","60-65",2.72350938298453,1.26098208092573,4.52740145990025,14
+"Acute Pancreatitis","Other causes","Volume -20%","15-29",1.63792281677419,0.517951519571018,4.01897195225634,13
+"Acute Pancreatitis","Other causes","Volume -20%","30-44",7.78726433850468,2.78204956697244,17.0529476062583,14
+"Acute Pancreatitis","Other causes","Volume -20%","45-59",14.6632541219723,4.77605597694422,33.753725283907,14
+"Acute Pancreatitis","Other causes","Volume -20%","60-65",4.39681296764691,1.27402048994055,11.2749502299855,14
+"Breast Cancer","Cancer","Volume -20%","15-29",0.176631821926963,0.144019766495771,0.213922848970519,7
+"Breast Cancer","Cancer","Volume -20%","30-44",3.93796582753106,3.21067598796126,4.75774220345842,7
+"Breast Cancer","Cancer","Volume -20%","45-59",9.26396752010779,7.5053913442092,11.2613012397481,7
+"Breast Cancer","Cancer","Volume -20%","60-65",3.36841416324294,2.61702663134711,4.25964682331285,7
+"Colon and rectum Cancer","Cancer","Volume -20%","15-29",0.62648011214502,0.40399499568541,0.901956001993294,14
+"Colon and rectum Cancer","Cancer","Volume -20%","30-44",6.10979063992328,3.95619995236309,8.72715248803062,14
+"Colon and rectum Cancer","Cancer","Volume -20%","45-59",23.4744003315578,14.7791577520019,34.1710928381309,14
+"Colon and rectum Cancer","Cancer","Volume -20%","60-65",13.1990228928144,7.9536542365826,20.1019956153869,14
+"DM2","Other causes","Volume -20%","15-29",-0.0326204560323675,-0.178076340783859,0.160000117998584,14
+"DM2","Other causes","Volume -20%","30-44",-0.0774895239845891,-0.801316386129125,0.844762252421819,14
+"DM2","Other causes","Volume -20%","45-59",-0.455153675535137,-4.31774017664996,4.44523233200742,14
+"DM2","Other causes","Volume -20%","60-65",-0.805048287278053,-3.64240940111023,2.67233190570126,14
+"Epilepsy","Neuropsychiatric","Volume -20%","15-29",5.17450962428893,3.43974083299331,7.41456549142097,14
+"Epilepsy","Neuropsychiatric","Volume -20%","30-44",9.4460645294627,6.34316878722831,13.34880028147,14
+"Epilepsy","Neuropsychiatric","Volume -20%","45-59",13.8113216961869,8.95818008306889,19.9124766567754,14
+"Epilepsy","Neuropsychiatric","Volume -20%","60-65",4.01528678819671,2.46576079854652,6.10833066421685,14
+"HIV","Other causes","Volume -20%","15-29",1.55888188838053,0.808498880290001,2.48503892540363,14
+"HIV","Other causes","Volume -20%","30-44",8.16918772006193,4.35949941849662,12.7544641207671,14
+"HIV","Other causes","Volume -20%","45-59",7.02179712907775,3.88746307366389,10.7038144761418,14
+"HIV","Other causes","Volume -20%","60-65",0.767931486122989,0.34902941860843,1.29610773412922,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -20%","15-29",0.271682156197643,0.189630005547493,0.365920449028699,12
+"Hypertensive Heart Disease","Cardiovascular","Volume -20%","30-44",2.73425779045716,1.95802067777277,3.60868665336675,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -20%","45-59",15.4242858071038,11.0964661637677,20.2628222535122,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -20%","60-65",12.745026867326,8.74142607613873,17.4252824442474,14
+"Intentional Injuries","Injuries","Volume -20%","15-29",21.1103300887715,9.77747622370576,34.6906351021355,14
+"Intentional Injuries","Injuries","Volume -20%","30-44",25.9216671358522,11.9983761380141,41.9642101275668,14
+"Intentional Injuries","Injuries","Volume -20%","45-59",16.685840319495,7.59043874365951,27.6282338401705,14
+"Intentional Injuries","Injuries","Volume -20%","60-65",3.19506284891374,1.45996268656488,5.40713005302845,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -20%","15-29",2.42489542709112,1.22271916386041,4.22295874195898,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -20%","30-44",12.7902505229918,6.72352553911861,21.3732181746486,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -20%","45-59",39.4446394458231,20.2777442228298,67.3217474503931,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -20%","60-65",17.1870654427502,8.55615264517992,30.3282927389585,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -20%","15-29",-0.038930708377939,-0.516673711595284,0.938682917690814,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -20%","30-44",-0.250558369774591,-3.34548311075903,6.03440288542957,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -20%","45-59",2.43313081682856,-16.7943145360089,32.5615223425865,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -20%","60-65",-3.63580519782687,-16.258909457558,14.7353419561956,14
+"Ischaemic Stroke","Cardiovascular","Volume -20%","15-29",0.162245215897954,-0.0336551381892486,1.33118102807703,14
+"Ischaemic Stroke","Cardiovascular","Volume -20%","30-44",0.865134511629012,0.0101030115322879,3.15330097288427,14
+"Ischaemic Stroke","Cardiovascular","Volume -20%","45-59",5.68811160241977,0.452578398693071,17.1498207111887,14
+"Ischaemic Stroke","Cardiovascular","Volume -20%","60-65",4.18371304870327,0.0994840692971768,12.4700339876738,14
+"Larynx Cancer","Cancer","Volume -20%","30-44",0.388253573167935,0.257621044621564,0.541417152434945,9
+"Larynx Cancer","Cancer","Volume -20%","45-59",4.1517988400834,2.67598710977606,5.91418999149496,13
+"Larynx Cancer","Cancer","Volume -20%","60-65",3.32385186837282,1.98454505529792,5.00526169912025,14
+"Liver Cancer","Cancer","Volume -20%","15-29",0.0966152121441176,0.0430323885825614,0.16581991787748,12
+"Liver Cancer","Cancer","Volume -20%","30-44",0.604413307239613,0.268733938946201,1.03805228542636,14
+"Liver Cancer","Cancer","Volume -20%","45-59",4.73083178558147,2.04408412576572,8.31479617396431,14
+"Liver Cancer","Cancer","Volume -20%","60-65",3.55481403212604,1.49766022892918,6.49544145270193,14
+"Liver Cirrhosis","Other causes","Volume -20%","15-29",4.9767217599567,2.62876611928503,7.86336113124846,13
+"Liver Cirrhosis","Other causes","Volume -20%","30-44",147.959557209331,78.9399270814801,232.161865548631,14
+"Liver Cirrhosis","Other causes","Volume -20%","45-59",670.870755227879,335.316404801014,1080.18184271259,14
+"Liver Cirrhosis","Other causes","Volume -20%","60-65",183.101051810889,77.9644340487372,337.592445795121,14
+"Lower Respiratory Infection","Other causes","Volume -20%","15-29",1.011096905889,0.188459052996522,2.06998601461013,14
+"Lower Respiratory Infection","Other causes","Volume -20%","30-44",4.48104906606654,0.841095025736718,9.1870964878015,14
+"Lower Respiratory Infection","Other causes","Volume -20%","45-59",12.8306547453552,2.22297018894795,26.9822249045421,14
+"Lower Respiratory Infection","Other causes","Volume -20%","60-65",6.39940982202554,1.15899358818025,13.6114848201051,14
+"Oesophagus Cancer","Cancer","Volume -20%","15-29",0.0712249945676564,0.0538931522080421,0.0896660568843381,3
+"Oesophagus Cancer","Cancer","Volume -20%","30-44",0.990111544645911,0.753432543131985,1.23566491577518,12
+"Oesophagus Cancer","Cancer","Volume -20%","45-59",10.4526448510307,7.73579404331308,13.1740320577616,14
+"Oesophagus Cancer","Cancer","Volume -20%","60-65",8.26054150509877,5.47565349583711,11.3591283692164,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -20%","15-29",0.503978533713533,0.353656586521727,0.667186306820475,7
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -20%","30-44",2.63161953268177,1.81583244126652,3.52804359233265,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -20%","45-59",14.6618868626871,9.83407529927821,19.8939101325617,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -20%","60-65",7.86037156703241,4.72276495236916,11.550556181939,14
+"Other Pharyngeal Cancer","Cancer","Volume -20%","15-29",0.27164193355881,0.19211192670085,0.362078609716277,4
+"Other Pharyngeal Cancer","Cancer","Volume -20%","30-44",0.920827963159972,0.63105740152554,1.24123497714812,8
+"Other Pharyngeal Cancer","Cancer","Volume -20%","45-59",6.16307205467859,4.1339977631668,8.36178717883727,14
+"Other Pharyngeal Cancer","Cancer","Volume -20%","60-65",5.60829377450651,3.3669968363602,8.22531506292913,12
+"Pancreatic Cancer","Cancer","Volume -20%","15-29",0.0261516715939664,0.0134687336665185,0.0404425434292578,6
+"Pancreatic Cancer","Cancer","Volume -20%","30-44",0.544613055196835,0.278799191535331,0.841542435880233,14
+"Pancreatic Cancer","Cancer","Volume -20%","45-59",3.99590111139482,1.99956258083802,6.23998063265278,14
+"Pancreatic Cancer","Cancer","Volume -20%","60-65",2.52696050798548,1.25018482762649,4.07401022686599,14
+"Road Injuries","Injuries","Volume -20%","15-29",23.7002684813516,14.4760978065572,34.4348791160372,14
+"Road Injuries","Injuries","Volume -20%","30-44",26.7310431365647,16.4543093094453,38.2741192999677,14
+"Road Injuries","Injuries","Volume -20%","45-59",23.2345907049072,14.0336663929136,33.952568345306,14
+"Road Injuries","Injuries","Volume -20%","60-65",5.98654476265984,3.54348905193265,9.04025196933116,14
+"Stomach Cancer","Cancer","Volume -20%","15-29",0.124818665075993,0.0218311140854789,0.240364301311237,14
+"Stomach Cancer","Cancer","Volume -20%","30-44",1.70316246893058,0.377063269529221,3.14732165493822,14
+"Stomach Cancer","Cancer","Volume -20%","45-59",11.8308017253847,4.80862237385644,19.3027401969111,14
+"Stomach Cancer","Cancer","Volume -20%","60-65",6.1881173498654,1.26961345321224,11.9033638324099,14
+"Tuberculosis","Other causes","Volume -20%","15-29",2.80161703521818,0.375425639404054,8.64011713663116,14
+"Tuberculosis","Other causes","Volume -20%","30-44",10.6866270291706,1.4319652918753,32.7324327360831,14
+"Tuberculosis","Other causes","Volume -20%","45-59",31.4461852842958,3.50175042789324,104.311422659079,14
+"Tuberculosis","Other causes","Volume -20%","60-65",9.7889689883671,1.17856662901518,33.6348979535178,14
+"Unintentional Injuries","Injuries","Volume -20%","15-29",10.9753272803549,5.15577447638564,17.7394984948232,14
+"Unintentional Injuries","Injuries","Volume -20%","30-44",17.5232419076792,8.22170904220973,27.9085812669883,14
+"Unintentional Injuries","Injuries","Volume -20%","45-59",18.4417046063811,8.49056840016303,29.9293348753262,14
+"Unintentional Injuries","Injuries","Volume -20%","60-65",5.4197690161972,2.5144592206028,8.98921258182317,14
+"Acute Pancreatitis","Other causes","Volume -30%","15-29",2.30818271561056,0.73675927600743,5.50892023201914,13
+"Acute Pancreatitis","Other causes","Volume -30%","30-44",11.0392651077963,4.0138763895595,23.4923214067713,14
+"Acute Pancreatitis","Other causes","Volume -30%","45-59",20.6099114907119,6.85401106733504,46.0348815857224,14
+"Acute Pancreatitis","Other causes","Volume -30%","60-65",6.20890437665521,1.80841709360616,15.5229887442037,14
+"Breast Cancer","Cancer","Volume -30%","15-29",0.274397985311429,0.224770569794824,0.330775450295132,7
+"Breast Cancer","Cancer","Volume -30%","30-44",6.09962478006686,4.9964141086429,7.33972233017352,7
+"Breast Cancer","Cancer","Volume -30%","45-59",14.3041866476203,11.6090771817073,17.3317157607437,7
+"Breast Cancer","Cancer","Volume -30%","60-65",5.20034973006964,4.03777426610333,6.56297202813999,7
+"Colon and rectum Cancer","Cancer","Volume -30%","15-29",0.925888863442381,0.599743972850917,1.32651655554119,14
+"Colon and rectum Cancer","Cancer","Volume -30%","30-44",9.03320473414625,5.87605935743867,12.8371354336642,14
+"Colon and rectum Cancer","Cancer","Volume -30%","45-59",34.6195213966511,21.9166032980232,50.1162374284885,14
+"Colon and rectum Cancer","Cancer","Volume -30%","60-65",19.5031947143012,11.8163420599777,29.5389135321061,14
+"DM2","Other causes","Volume -30%","15-29",-0.0717472416721348,-0.287702112904192,0.205560253188582,14
+"DM2","Other causes","Volume -30%","30-44",-0.207855762685047,-1.28685467311716,1.1310823266204,14
+"DM2","Other causes","Volume -30%","45-59",-1.11776086551145,-6.89947033955124,6.01994893376967,14
+"DM2","Other causes","Volume -30%","60-65",-1.55791051277983,-5.83693405904639,3.54106858223504,14
+"Epilepsy","Neuropsychiatric","Volume -30%","15-29",7.5340733347127,5.05358282947796,10.6903912736639,14
+"Epilepsy","Neuropsychiatric","Volume -30%","30-44",13.7377775785945,9.30751874040965,19.223095786119,14
+"Epilepsy","Neuropsychiatric","Volume -30%","45-59",19.9678313845281,13.0889803066855,28.4875057680528,14
+"Epilepsy","Neuropsychiatric","Volume -30%","60-65",5.83544881377852,3.62059010906734,8.78504930120993,14
+"HIV","Other causes","Volume -30%","15-29",2.1848962596612,1.11022944558362,3.53322668851921,14
+"HIV","Other causes","Volume -30%","30-44",11.555627878915,6.05451770700757,18.2422373955428,14
+"HIV","Other causes","Volume -30%","45-59",10.277772764514,5.62495555805353,15.7729638179303,14
+"HIV","Other causes","Volume -30%","60-65",1.09202135606618,0.479610575927573,1.87590586414057,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -30%","15-29",0.415434929793974,0.289588888093055,0.558849046871612,12
+"Hypertensive Heart Disease","Cardiovascular","Volume -30%","30-44",4.18349972944135,2.98886796896344,5.5189020207681,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -30%","45-59",23.5435080820047,16.8914951812915,30.9471543803199,14
+"Hypertensive Heart Disease","Cardiovascular","Volume -30%","60-65",19.4970517677207,13.3380408791235,26.6690098218335,14
+"Intentional Injuries","Injuries","Volume -30%","15-29",31.5197008006448,14.6291590343724,51.6940197111634,14
+"Intentional Injuries","Injuries","Volume -30%","30-44",38.694780997974,17.9490753655765,62.5127446422385,14
+"Intentional Injuries","Injuries","Volume -30%","45-59",24.8876693037944,11.3516862026861,41.1007976291704,14
+"Intentional Injuries","Injuries","Volume -30%","60-65",4.76843646062676,2.18383992451316,8.05145423292637,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -30%","15-29",3.5622113879124,1.8136661129278,6.11597936878005,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -30%","30-44",18.802801807263,9.97727850471844,31.0373759903049,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -30%","45-59",57.8717238358045,30.0469072490556,97.5221336081954,14
+"Intracerebral Haemorrhage","Cardiovascular","Volume -30%","60-65",25.2921957375548,12.7016694368989,44.1178861850779,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -30%","15-29",-0.14491064527088,-0.855533115845572,1.30108366480165,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -30%","30-44",-1.21085331572171,-5.73580358165253,7.89370289195188,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -30%","45-59",-2.52067729677071,-30.3469387502521,41.4739079223895,14
+"Ischaemic Heart Disease","Cardiovascular","Volume -30%","60-65",-8.43581466717295,-27.3650486002485,18.4549513779898,14
+"Ischaemic Stroke","Cardiovascular","Volume -30%","15-29",0.196909476201256,-0.0631293943910337,1.57445038154942,14
+"Ischaemic Stroke","Cardiovascular","Volume -30%","30-44",1.06330093466709,-0.100222753615253,3.96658483555914,14
+"Ischaemic Stroke","Cardiovascular","Volume -30%","45-59",7.43735410009117,0.130803833272477,22.3343172565743,14
+"Ischaemic Stroke","Cardiovascular","Volume -30%","60-65",5.3787607955493,-0.372846861914607,16.3614815433121,14
+"Larynx Cancer","Cancer","Volume -30%","30-44",0.569903079947113,0.379584432067425,0.790842078015384,9
+"Larynx Cancer","Cancer","Volume -30%","45-59",6.07789980139049,3.9400871683114,8.60239063372904,13
+"Larynx Cancer","Cancer","Volume -30%","60-65",4.87526524810212,2.92264935115066,7.30083507707684,14
+"Liver Cancer","Cancer","Volume -30%","15-29",0.143798291260371,0.0643072066272427,0.245860824827226,12
+"Liver Cancer","Cancer","Volume -30%","30-44",0.898960216332694,0.401250308016153,1.5374887435697,14
+"Liver Cancer","Cancer","Volume -30%","45-59",7.02534443864125,3.05006352839376,12.2902878933825,14
+"Liver Cancer","Cancer","Volume -30%","60-65",5.28697209014045,2.23713895630245,9.622758000261,14
+"Liver Cirrhosis","Other causes","Volume -30%","15-29",6.869099968407,3.68065393401728,10.6976210219587,13
+"Liver Cirrhosis","Other causes","Volume -30%","30-44",203.571046597418,110.141010187763,314.631275346891,14
+"Liver Cirrhosis","Other causes","Volume -30%","45-59",907.619510731248,460.139402393595,1439.45221378657,14
+"Liver Cirrhosis","Other causes","Volume -30%","60-65",251.478440082405,109.174974066017,456.00969145501,14
+"Lower Respiratory Infection","Other causes","Volume -30%","15-29",1.50254779475127,0.282173600047356,3.04883971066171,14
+"Lower Respiratory Infection","Other causes","Volume -30%","30-44",6.6504673035866,1.25900787267079,13.5012584918487,14
+"Lower Respiratory Infection","Other causes","Volume -30%","45-59",19.0066847272636,3.32677277683831,39.5105562383683,14
+"Lower Respiratory Infection","Other causes","Volume -30%","60-65",9.49773241885694,1.73511249925538,20.0146467426875,14
+"Oesophagus Cancer","Cancer","Volume -30%","15-29",0.104059837780788,0.0789316508058308,0.130622111209148,3
+"Oesophagus Cancer","Cancer","Volume -30%","30-44",1.44449645448142,1.10301219856418,1.79731610518993,12
+"Oesophagus Cancer","Cancer","Volume -30%","45-59",15.1757758683205,11.2679934781921,19.0758683448902,14
+"Oesophagus Cancer","Cancer","Volume -30%","60-65",12.042358787355,8.02153761935394,16.497135913394,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -30%","15-29",0.725200005400195,0.512099380185997,0.952398932112543,7
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -30%","30-44",3.79379619375956,2.63221265580155,5.05326225373477,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -30%","45-59",21.0056980517566,14.1912405836487,28.2442999916531,14
+"Oral Cavity and Pharynx Cancer","Cancer","Volume -30%","60-65",11.3117464106975,6.84249721302239,16.4925221077483,14
+"Other Pharyngeal Cancer","Cancer","Volume -30%","15-29",0.392601917169447,0.279064727393955,0.51983708969996,4
+"Other Pharyngeal Cancer","Cancer","Volume -30%","30-44",1.32610484340739,0.91467087550459,1.77534215994981,8
+"Other Pharyngeal Cancer","Cancer","Volume -30%","45-59",8.83126822268495,5.9663240104879,11.8735718826417,14
+"Other Pharyngeal Cancer","Cancer","Volume -30%","60-65",8.06288162579438,4.87339719567692,11.7276294681862,12
+"Pancreatic Cancer","Cancer","Volume -30%","15-29",0.0390894425208989,0.0201673924978813,0.060345772411351,6
+"Pancreatic Cancer","Cancer","Volume -30%","30-44",0.813401639107696,0.417280825482681,1.25403582931347,14
+"Pancreatic Cancer","Cancer","Volume -30%","45-59",5.96375049749029,2.99164840207763,9.2898566815141,14
+"Pancreatic Cancer","Cancer","Volume -30%","60-65",3.77443881017623,1.87145043566403,6.07245961877458,14
+"Road Injuries","Injuries","Volume -30%","15-29",35.3074345898728,21.6104595416673,51.1796262757789,14
+"Road Injuries","Injuries","Volume -30%","30-44",39.8087646062683,24.5572153103296,56.8639459939877,14
+"Road Injuries","Injuries","Volume -30%","45-59",34.5555241296741,20.9318379033838,50.3561981814335,14
+"Road Injuries","Injuries","Volume -30%","60-65",8.91205432197462,5.28798054150689,13.4297390093976,14
+"Stomach Cancer","Cancer","Volume -30%","15-29",0.171206714026382,0.0172882061557529,0.342945149442825,14
+"Stomach Cancer","Cancer","Volume -30%","30-44",2.33705487001343,0.355902461475142,4.48938546876149,14
+"Stomach Cancer","Cancer","Volume -30%","45-59",16.2306816409938,5.83601812136271,27.2858766071113,14
+"Stomach Cancer","Cancer","Volume -30%","60-65",8.48946079396718,1.25472427048982,16.8569380358364,14
+"Tuberculosis","Other causes","Volume -30%","15-29",4.01372924078031,0.559015712617489,11.7014544722923,14
+"Tuberculosis","Other causes","Volume -30%","30-44",15.2423358025329,2.12983209865809,43.9566677727828,14
+"Tuberculosis","Other causes","Volume -30%","45-59",44.4079681150112,5.20273479388921,137.833573569484,14
+"Tuberculosis","Other causes","Volume -30%","60-65",13.9408331694272,1.75361960651583,45.044042602615,14
+"Unintentional Injuries","Injuries","Volume -30%","15-29",16.3881561788687,7.71437043647842,26.4309746922156,14
+"Unintentional Injuries","Injuries","Volume -30%","30-44",26.1573642920396,12.299388360117,41.5681132111107,14
+"Unintentional Injuries","Injuries","Volume -30%","45-59",27.5052870605314,12.6988192808916,44.5247196289359,14
+"Unintentional Injuries","Injuries","Volume -30%","60-65",8.08854839707765,3.76064545031537,13.384853135015,14
+"Intentional Injuries","Injuries","HED -10%: no shift","15-29",93.4868507190504,12.3106297660777,180.449566839747,14
+"Intentional Injuries","Injuries","HED -10%: no shift","30-44",108.405030861889,14.3057259173329,204.769960292262,14
+"Intentional Injuries","Injuries","HED -10%: no shift","45-59",63.1918863702921,8.40516083929664,124.820032173215,14
+"Intentional Injuries","Injuries","HED -10%: no shift","60-65",11.3787071583886,1.37218762153635,23.960320721113,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: no shift","15-29",0.723869418879367,3.33978923698908e-06,1.67549189804694,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: no shift","30-44",5.71142649873817,1.90604620359394,10.702421779839,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: no shift","45-59",21.5100291427322,7.18226123074601,41.3578570742302,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: no shift","60-65",11.1179569295227,3.58606489290852,21.6350342358703,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: no shift","15-29",0.171681761923306,0.0034035314561439,0.353208118912692,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: no shift","30-44",0.830102525857592,0.281175092068965,1.45093033157678,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: no shift","45-59",3.33751263604612,1.13315303466394,5.94630816035487,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: no shift","60-65",2.51710076836392,0.832053555505422,4.62096947585886,14
+"Road Injuries","Injuries","HED -10%: no shift","15-29",102.848555269498,52.8435165105759,151.890959452497,14
+"Road Injuries","Injuries","HED -10%: no shift","30-44",109.537726720722,57.0187702070661,158.795104809292,14
+"Road Injuries","Injuries","HED -10%: no shift","45-59",86.6674903336596,43.5559027662904,130.577555987303,14
+"Road Injuries","Injuries","HED -10%: no shift","60-65",22.0152458285976,10.3055953091818,35.4928461048078,14
+"Unintentional Injuries","Injuries","HED -10%: no shift","15-29",57.8276646664418,24.4634861169965,92.6263662298222,14
+"Unintentional Injuries","Injuries","HED -10%: no shift","30-44",85.8984913753059,37.0580051398742,134.264092437641,14
+"Unintentional Injuries","Injuries","HED -10%: no shift","45-59",83.0600803306232,34.7056413611404,134.739638750649,14
+"Unintentional Injuries","Injuries","HED -10%: no shift","60-65",23.4682709899444,9.23132464381329,40.4277167468955,14
+"Intentional Injuries","Injuries","HED -25%: no shift","15-29",233.717126797626,30.7765744151934,451.123917099369,14
+"Intentional Injuries","Injuries","HED -25%: no shift","30-44",271.012577154721,35.7643147933313,511.924900730654,14
+"Intentional Injuries","Injuries","HED -25%: no shift","45-59",157.97971592573,21.0129020982421,312.050080433038,14
+"Intentional Injuries","Injuries","HED -25%: no shift","60-65",28.4467678959714,3.43046905384087,59.9008018027826,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: no shift","15-29",1.80967354719841,8.34947308584745e-06,4.18872974511735,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: no shift","30-44",14.2785662468455,4.76511550898485,26.7560544495973,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: no shift","45-59",53.7750728568298,17.9556530768647,103.394642685575,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: no shift","60-65",27.7948923238066,8.9651622322713,54.0875855896764,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: no shift","15-29",0.429204404808265,0.00850882864036747,0.883020297281731,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: no shift","30-44",2.07525631464399,0.702937730172411,3.62732582894194,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: no shift","45-59",8.34378159011522,2.83288258665995,14.8657704008872,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: no shift","60-65",6.29275192090981,2.08013388876353,11.5524236896471,14
+"Road Injuries","Injuries","HED -25%: no shift","15-29",257.121388173745,132.108791276439,379.727398631243,14
+"Road Injuries","Injuries","HED -25%: no shift","30-44",273.844316801804,142.546925517665,396.987762023231,14
+"Road Injuries","Injuries","HED -25%: no shift","45-59",216.668725834149,108.889756915725,326.443889968259,14
+"Road Injuries","Injuries","HED -25%: no shift","60-65",55.0381145714942,25.7639882729545,88.7321152620195,14
+"Unintentional Injuries","Injuries","HED -25%: no shift","15-29",144.569161666105,61.1587152924911,231.565915574555,14
+"Unintentional Injuries","Injuries","HED -25%: no shift","30-44",214.746228438265,92.6450128496855,335.660231094102,14
+"Unintentional Injuries","Injuries","HED -25%: no shift","45-59",207.650200826558,86.7641034028513,336.849096876623,14
+"Unintentional Injuries","Injuries","HED -25%: no shift","60-65",58.6706774748611,23.0783116095332,101.069291867239,14
+"Intentional Injuries","Injuries","HED -50%: no shift","15-29",467.434253595252,61.5531488303864,902.247834198739,14
+"Intentional Injuries","Injuries","HED -50%: no shift","30-44",542.025154309441,71.528629586663,1023.84980146131,14
+"Intentional Injuries","Injuries","HED -50%: no shift","45-59",315.95943185146,42.0258041964842,624.100160866075,14
+"Intentional Injuries","Injuries","HED -50%: no shift","60-65",56.893535791943,6.86093810768175,119.801603605565,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: no shift","15-29",3.61934709439683,1.66989461688e-05,8.37745949023469,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: no shift","30-44",28.557132493691,9.53023101796961,53.5121088991945,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: no shift","45-59",107.550145713659,35.9113061537304,206.78928537115,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: no shift","60-65",55.5897846476131,17.9303244645419,108.175171179352,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: no shift","15-29",0.858408809616529,0.0170176572807288,1.76604059456346,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: no shift","30-44",4.15051262928798,1.40587546034483,7.25465165788388,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: no shift","45-59",16.6875631802304,5.66576517331991,29.7315408017745,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: no shift","60-65",12.5855038418196,4.16026777752703,23.1048473792941,14
+"Road Injuries","Injuries","HED -50%: no shift","15-29",514.242776347491,264.217582552879,759.454797262485,14
+"Road Injuries","Injuries","HED -50%: no shift","30-44",547.688633603609,285.093851035331,793.975524046461,14
+"Road Injuries","Injuries","HED -50%: no shift","45-59",433.337451668298,217.779513831451,652.887779936517,14
+"Road Injuries","Injuries","HED -50%: no shift","60-65",110.076229142988,51.527976545909,177.464230524039,14
+"Unintentional Injuries","Injuries","HED -50%: no shift","15-29",289.138323332209,122.317430584982,463.13183114911,14
+"Unintentional Injuries","Injuries","HED -50%: no shift","30-44",429.49245687653,185.290025699371,671.320462188204,14
+"Unintentional Injuries","Injuries","HED -50%: no shift","45-59",415.300401653117,173.528206805703,673.698193753247,14
+"Unintentional Injuries","Injuries","HED -50%: no shift","60-65",117.341354949722,46.1566232190665,202.138583734478,14
+"Intentional Injuries","Injuries","HED -10%: complete shift","15-29",97.2263722327172,16.7826061231754,183.425073263312,14
+"Intentional Injuries","Injuries","HED -10%: complete shift","30-44",112.748737027393,19.7740251081007,208.0571157438,14
+"Intentional Injuries","Injuries","HED -10%: complete shift","45-59",65.8092554455456,11.3466210430422,126.887917782096,14
+"Intentional Injuries","Injuries","HED -10%: complete shift","60-65",11.8015585182854,1.84324142504397,24.3432968245262,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: complete shift","15-29",0.565647166213943,0.0658029620478348,1.25147578558408,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: complete shift","30-44",4.48285144803415,1.86870292480795,7.79697404603358,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: complete shift","45-59",20.3045939968662,9.11708983111786,34.788122315742,14
+"Ischaemic Heart Disease","Cardiovascular","HED -10%: complete shift","60-65",9.89777009666015,4.09573108848371,17.6592562127056,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: complete shift","15-29",0.212622224587152,-0.000916852828892669,0.538267982759438,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: complete shift","30-44",1.04264463419032,0.366733726215816,1.89257942139751,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: complete shift","45-59",5.05375128851875,1.76481976743909,9.34716383944118,14
+"Ischaemic Stroke","Cardiovascular","HED -10%: complete shift","60-65",3.61585333421744,1.24659700465892,6.79066917260863,14
+"Road Injuries","Injuries","HED -10%: complete shift","15-29",105.731059615983,56.4063015884043,154.125739927315,14
+"Road Injuries","Injuries","HED -10%: complete shift","30-44",112.617561856295,60.8962342598268,161.129300995069,14
+"Road Injuries","Injuries","HED -10%: complete shift","45-59",89.2068706491439,46.4750538815184,132.599305179518,14
+"Road Injuries","Injuries","HED -10%: complete shift","60-65",22.5844872853121,10.928145178062,36.0072383114834,14
+"Unintentional Injuries","Injuries","HED -10%: complete shift","15-29",59.5178300752683,26.4679507309657,94.0377120960795,14
+"Unintentional Injuries","Injuries","HED -10%: complete shift","30-44",88.4820041364303,40.1381059223137,136.305112464323,14
+"Unintentional Injuries","Injuries","HED -10%: complete shift","45-59",85.6273551871375,37.6393782214465,136.944159629162,14
+"Unintentional Injuries","Injuries","HED -10%: complete shift","60-65",24.1098355387253,9.92293426801996,41.0457513948324,14
+"Intentional Injuries","Injuries","HED -25%: complete shift","15-29",243.065930581793,41.9565153079383,458.562683158281,14
+"Intentional Injuries","Injuries","HED -25%: complete shift","30-44",281.871842568482,49.4350627702518,520.142789359501,14
+"Intentional Injuries","Injuries","HED -25%: complete shift","45-59",164.523138613864,28.3665526076053,317.219794455239,14
+"Intentional Injuries","Injuries","HED -25%: complete shift","60-65",29.5038962957136,4.60810356260995,60.8582420613156,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: complete shift","15-29",1.41411791553487,0.164507405119595,3.12868946396022,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: complete shift","30-44",11.2071286200855,4.67175731201978,19.4924351150839,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: complete shift","45-59",50.7614849921649,22.7927245777961,86.9703057893549,14
+"Ischaemic Heart Disease","Cardiovascular","HED -25%: complete shift","60-65",24.7444252416506,10.2393277212093,44.1481405317639,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: complete shift","15-29",0.531555561467876,-0.00229213207223614,1.34566995689859,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: complete shift","30-44",2.60661158547581,0.916834315539538,4.73144855349379,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: complete shift","45-59",12.6343782212969,4.41204941859774,23.367909598603,14
+"Ischaemic Stroke","Cardiovascular","HED -25%: complete shift","60-65",9.03963333554355,3.11649251164734,16.9766729315217,14
+"Road Injuries","Injuries","HED -25%: complete shift","15-29",264.327649039958,141.015753971011,385.314349818288,14
+"Road Injuries","Injuries","HED -25%: complete shift","30-44",281.543904640737,152.240585649567,402.823252487672,14
+"Road Injuries","Injuries","HED -25%: complete shift","45-59",223.01717662286,116.187634703796,331.498262948796,14
+"Road Injuries","Injuries","HED -25%: complete shift","60-65",56.4612182132803,27.3203629451549,90.0180957787085,14
+"Unintentional Injuries","Injuries","HED -25%: complete shift","15-29",148.794575188171,66.1698768274137,235.094280240199,14
+"Unintentional Injuries","Injuries","HED -25%: complete shift","30-44",221.205010341076,100.345264805783,340.762781160808,14
+"Unintentional Injuries","Injuries","HED -25%: complete shift","45-59",214.068387967844,94.0984455536164,342.360399072904,14
+"Unintentional Injuries","Injuries","HED -25%: complete shift","60-65",60.2745888468133,24.80733567005,102.614378487081,14
+"Intentional Injuries","Injuries","HED -50%: complete shift","15-29",486.131861163586,83.9130306158765,917.125366316562,14
+"Intentional Injuries","Injuries","HED -50%: complete shift","30-44",563.743685136964,98.8701255405042,1040.285578719,14
+"Intentional Injuries","Injuries","HED -50%: complete shift","45-59",329.046277227728,56.733105215211,634.439588910479,14
+"Intentional Injuries","Injuries","HED -50%: complete shift","60-65",59.0077925914273,9.21620712521988,121.716484122631,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: complete shift","15-29",2.82823583106974,0.329014810239198,6.25737892792041,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: complete shift","30-44",22.4142572401712,9.34351462403957,38.9848702301679,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: complete shift","45-59",101.522969984331,45.5854491555919,173.94061157871,14
+"Ischaemic Heart Disease","Cardiovascular","HED -50%: complete shift","60-65",49.4888504833014,20.4786554424187,88.2962810635281,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: complete shift","15-29",1.06311112293575,-0.00458426414447177,2.69133991379718,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: complete shift","30-44",5.21322317095164,1.83366863107909,9.46289710698758,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: complete shift","45-59",25.2687564425938,8.82409883719545,46.735819197206,14
+"Ischaemic Stroke","Cardiovascular","HED -50%: complete shift","60-65",18.0792666710871,6.23298502329468,33.9533458630434,14
+"Road Injuries","Injuries","HED -50%: complete shift","15-29",528.655298079916,282.031507942022,770.628699636576,14
+"Road Injuries","Injuries","HED -50%: complete shift","30-44",563.087809281475,304.481171299134,805.646504975344,14
+"Road Injuries","Injuries","HED -50%: complete shift","45-59",446.03435324572,232.375269407592,662.996525897592,14
+"Road Injuries","Injuries","HED -50%: complete shift","60-65",112.922436426561,54.6407258903098,180.036191557417,14
+"Unintentional Injuries","Injuries","HED -50%: complete shift","15-29",297.589150376342,132.339753654827,470.188560480398,14
+"Unintentional Injuries","Injuries","HED -50%: complete shift","30-44",442.410020682151,200.690529611567,681.525562321617,14
+"Unintentional Injuries","Injuries","HED -50%: complete shift","45-59",428.136775935688,188.196891107233,684.720798145808,14
+"Unintentional Injuries","Injuries","HED -50%: complete shift","60-65",120.549177693626,49.6146713400999,205.228756974162,14
+"Intentional Injuries","Injuries","Combined 10/25: no shift","15-29",243.274645048964,38.784585251176,462.091180150089,14
+"Intentional Injuries","Injuries","Combined 10/25: no shift","30-44",282.777689859335,46.1262097010978,525.239666028966,14
+"Intentional Injuries","Injuries","Combined 10/25: no shift","45-59",165.588010861178,27.3246994908415,320.855243521029,14
+"Intentional Injuries","Injuries","Combined 10/25: no shift","60-65",29.9182752277277,4.68279384965921,61.7377556190021,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: no shift","15-29",1.83160132954328,0.174463954525995,4.01123415935085,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: no shift","30-44",14.5736950874269,6.27051099787255,25.6315349694467,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: no shift","45-59",57.7834306079583,27.5064354190823,99.9431590490937,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: no shift","60-65",27.2335362387894,12.1231088361244,49.0880703838146,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: no shift","15-29",0.540590073047753,0.00121707482550279,1.70217128158674,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: no shift","30-44",2.64610833442727,0.900470912918027,5.25146887025487,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: no shift","45-59",11.766587553939,3.97772525039011,23.5985159689572,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: no shift","60-65",8.85003105160908,2.99246475021054,17.5742554199022,14
+"Road Injuries","Injuries","Combined 10/25: no shift","15-29",267.321282698067,141.0386725436,391.315803301798,14
+"Road Injuries","Injuries","Combined 10/25: no shift","30-44",285.381431528686,152.877730196871,409.625921760415,14
+"Road Injuries","Injuries","Combined 10/25: no shift","45-59",226.749657369044,117.416528450721,338.090621042101,14
+"Road Injuries","Injuries","Combined 10/25: no shift","60-65",57.6651941259966,27.9332156852316,91.9401834372501,14
+"Unintentional Injuries","Injuries","Combined 10/25: no shift","15-29",149.442961632006,65.4013239031782,237.218402649381,14
+"Unintentional Injuries","Injuries","Combined 10/25: no shift","30-44",222.541103716202,99.7459170039262,344.141352164495,14
+"Unintentional Injuries","Injuries","Combined 10/25: no shift","45-59",215.894326617664,94.0019633434149,346.464606876436,14
+"Unintentional Injuries","Injuries","Combined 10/25: no shift","60-65",61.1208876504744,25.1649817138325,104.057225805959,14
+"Intentional Injuries","Injuries","Combined 20/50: no shift","15-29",484.379949567878,77.3391973830772,920.027315216134,14
+"Intentional Injuries","Injuries","Combined 20/50: no shift","30-44",562.93922950252,91.7863423310647,1045.36230967625,14
+"Intentional Injuries","Injuries","Combined 20/50: no shift","45-59",329.537369845575,54.3463135052681,638.545345381684,14
+"Intentional Injuries","Injuries","Combined 20/50: no shift","60-65",59.5553675646062,9.31857082513383,122.894412970883,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: no shift","15-29",3.59898764959138,0.3160208655315,7.8769625492222,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: no shift","30-44",28.6046335975652,12.0814311962703,50.1370972881493,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: no shift","45-59",112.056400024303,52.0724229709099,194.385101618573,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: no shift","60-65",52.5909770792821,22.8382072988861,95.0888879463369,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: no shift","15-29",1.07646244305645,-0.000659648639766487,3.04735441940321,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: no shift","30-44",5.24796621754109,1.80529010995122,10.0455314616137,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: no shift","45-59",23.2625834264397,7.947004677083,45.1717964151017,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: no shift","60-65",17.4984865939148,5.965835735896,33.8912235884777,14
+"Road Injuries","Injuries","Combined 20/50: no shift","15-29",531.06467749502,280.157121388004,777.370170075814,14
+"Road Injuries","Injuries","Combined 20/50: no shift","30-44",566.776450304781,303.638475067412,813.391521245672,14
+"Road Injuries","Injuries","Combined 20/50: no shift","45-59",450.085962591222,233.07199139844,671.082699441355,14
+"Road Injuries","Injuries","Combined 20/50: no shift","60-65",114.519663826527,55.4578451591142,182.523273264892,14
+"Unintentional Injuries","Injuries","Combined 20/50: no shift","15-29",297.570592486936,130.223536803609,472.261276709744,14
+"Unintentional Injuries","Injuries","Combined 20/50: no shift","30-44",442.998988191554,198.4764450598,685.000176541078,14
+"Unintentional Injuries","Injuries","Combined 20/50: no shift","45-59",429.650024610766,187.116701291817,689.368791279332,14
+"Unintentional Injuries","Injuries","Combined 20/50: no shift","60-65",121.673754293643,50.1220518593233,207.12733276535,14
+"Intentional Injuries","Injuries","Combined 30/50: no shift","15-29",492.73622948457,85.1806938840225,928.613578368295,14
+"Intentional Injuries","Injuries","Combined 30/50: no shift","30-44",573.245541968304,102.447517923591,1056.45297578782,14
+"Intentional Injuries","Injuries","Combined 30/50: no shift","45-59",336.212794331231,60.5406275083884,645.935397788201,14
+"Intentional Injuries","Injuries","Combined 30/50: no shift","60-65",60.8664282576634,10.5199287134634,124.445112764425,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: no shift","15-29",3.45875120773994,0.410393655482737,7.55180468957275,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: no shift","30-44",27.4678350918804,12.13628623467,47.622462831287,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: no shift","45-59",107.30086804568,52.7820307546278,183.722323673515,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: no shift","60-65",47.5544820204808,21.3551326375643,87.5988964404443,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: no shift","15-29",1.13735319194029,-0.00866088738203045,3.30999463971537,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: no shift","30-44",5.55574569631049,1.91405027845883,10.7895631497226,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: no shift","45-59",25.4621478342083,8.63175662137367,50.1440453787374,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: no shift","60-65",19.0700023206286,6.44882044515315,37.4796515539119,14
+"Road Injuries","Injuries","Combined 30/50: no shift","15-29",539.304545833484,287.725484446417,786.313474529298,14
+"Road Injuries","Injuries","Combined 30/50: no shift","30-44",576.116682412162,312.629760111133,823.374216894728,14
+"Road Injuries","Injuries","Combined 30/50: no shift","45-59",458.250008309421,240.407801409516,679.872110061742,14
+"Road Injuries","Injuries","Combined 30/50: no shift","60-65",116.69216485767,57.4027023598368,185.024531890993,14
+"Unintentional Injuries","Injuries","Combined 30/50: no shift","15-29",301.729486424695,134.248001876007,476.80870569381,14
+"Unintentional Injuries","Injuries","Combined 30/50: no shift","30-44",449.654517961141,205.001988962557,692.027175426439,14
+"Unintentional Injuries","Injuries","Combined 30/50: no shift","45-59",436.703972213106,193.510822081713,697.119680019605,14
+"Unintentional Injuries","Injuries","Combined 30/50: no shift","60-65",123.807565658945,51.942913816381,209.54091032948,14
+"Intentional Injuries","Injuries","Combined 10/25: complete shift","15-29",251.629765186313,48.4869472264379,468.851665279949,14
+"Intentional Injuries","Injuries","Combined 10/25: complete shift","30-44",292.479765567512,58.2769337506467,532.522574902622,14
+"Intentional Injuries","Injuries","Combined 10/25: complete shift","45-59",171.42791290723,33.8370886322907,325.707632564671,14
+"Intentional Injuries","Injuries","Combined 10/25: complete shift","60-65",30.8622330393011,5.68979820639446,62.6361512519473,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: complete shift","15-29",1.34276514678725,0.272236744602796,3.07131491589687,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: complete shift","30-44",10.7457560832229,5.17142665903746,18.7815562590767,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: complete shift","45-59",50.503709994287,26.4960100157401,86.0402314810795,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 10/25: complete shift","60-65",22.5057428039614,10.8078443894314,40.9213894779767,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: complete shift","15-29",0.595087365265825,-0.00683511049664033,1.96460595948568,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: complete shift","30-44",2.96403344192738,1.01507773952276,5.99157374145139,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: complete shift","45-59",14.9885708049267,5.05192101990252,30.2419114927364,14
+"Ischaemic Stroke","Cardiovascular","Combined 10/25: complete shift","60-65",10.9110640212653,3.68600919700017,21.9481460495323,14
+"Road Injuries","Injuries","Combined 10/25: complete shift","15-29",273.742607818469,148.701583197803,396.59617062089,14
+"Road Injuries","Injuries","Combined 10/25: complete shift","30-44",292.239157404847,161.512705305891,414.968871173216,14
+"Road Injuries","Injuries","Combined 10/25: complete shift","45-59",232.393307929225,123.935435800087,342.585282652437,14
+"Road Injuries","Injuries","Combined 10/25: complete shift","60-65",58.9314289998429,29.322017164156,93.0671637691486,14
+"Unintentional Injuries","Injuries","Combined 10/25: complete shift","15-29",153.219392947217,69.7234146199954,240.604267812513,14
+"Unintentional Injuries","Injuries","Combined 10/25: complete shift","30-44",228.311533847001,106.592993273932,348.978363293262,14
+"Unintentional Injuries","Injuries","Combined 10/25: complete shift","45-59",221.622380547177,100.343232524681,351.345798218558,14
+"Unintentional Injuries","Injuries","Combined 10/25: complete shift","60-65",62.5531187119042,26.6147441450342,105.409957747805,14
+"Intentional Injuries","Injuries","Combined 20/50: complete shift","15-29",499.123197365899,94.3899043997334,931.384581051594,14
+"Intentional Injuries","Injuries","Combined 20/50: complete shift","30-44",580.054181056426,113.572631717676,1058.16013175301,14
+"Intentional Injuries","Injuries","Combined 20/50: complete shift","45-59",339.829685531692,65.8378505082931,646.972502820563,14
+"Intentional Injuries","Injuries","Combined 20/50: complete shift","60-65",61.2198012018514,11.117754736818,124.44242457381,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: complete shift","15-29",2.46640004695567,0.460914841138745,5.69668090415873,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: complete shift","30-44",19.7067556977076,9.17436474433426,34.696562799953,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: complete shift","45-59",90.4624280345017,45.6850938242514,156.550763155157,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 20/50: complete shift","60-65",40.3551685537504,18.6314533540675,74.577446424076,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: complete shift","15-29",1.0987131490913,-0.00670778947169065,3.25773054817,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: complete shift","30-44",5.49021576082074,1.90522113994105,10.6638862200306,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: complete shift","45-59",27.7176278320846,9.47029831817727,53.9570477323132,14
+"Ischaemic Stroke","Cardiovascular","Combined 20/50: complete shift","60-65",20.3286167800633,6.94598007873221,39.7379846154655,14
+"Road Injuries","Injuries","Combined 20/50: complete shift","15-29",542.362393679648,293.660486976759,786.455815412448,14
+"Road Injuries","Injuries","Combined 20/50: complete shift","30-44",578.836508569432,318.763954145591,822.858522910851,14
+"Road Injuries","Injuries","Combined 20/50: complete shift","45-59",459.993718643123,244.491113506718,678.914191959641,14
+"Road Injuries","Injuries","Combined 20/50: complete shift","60-65",116.74447293464,57.8940187534856,184.541382874525,14
+"Unintentional Injuries","Injuries","Combined 20/50: complete shift","15-29",304.234538729735,137.830559444038,478.095899370925,14
+"Unintentional Injuries","Injuries","Combined 20/50: complete shift","30-44",453.178216652525,210.852155960408,693.46952264144,14
+"Unintentional Injuries","Injuries","Combined 20/50: complete shift","45-59",439.74516405943,198.220917041978,698.109181846135,14
+"Unintentional Injuries","Injuries","Combined 20/50: complete shift","60-65",124.19913615151,52.6808122326007,209.484538256457,14
+"Intentional Injuries","Injuries","Combined 30/50: complete shift","15-29",505.532089048475,100.039425626538,939.449040328983,14
+"Intentional Injuries","Injuries","Combined 30/50: complete shift","30-44",588.095594132539,120.452057988993,1067.30176739519,14
+"Intentional Injuries","Injuries","Combined 30/50: complete shift","45-59",345.136619261383,70.3009358893087,653.170295187067,14
+"Intentional Injuries","Injuries","Combined 30/50: complete shift","60-65",62.3101523223695,12.0105870579956,125.817756173959,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: complete shift","15-29",2.20502659571037,0.481292733923249,5.34938043677521,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: complete shift","30-44",17.6039531414554,8.44040848105665,32.354888168412,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: complete shift","45-59",80.0793601048171,41.3959698323375,145.873396515724,14
+"Ischaemic Heart Disease","Cardiovascular","Combined 30/50: complete shift","60-65",33.0971888510422,14.7640387128757,67.5112623627633,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: complete shift","15-29",1.08021618799014,-0.00679628865704517,3.3152324998638,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: complete shift","30-44",5.43189934931308,1.86918057887323,10.7702555046923,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: complete shift","45-59",28.0499859271374,9.50255961219412,55.4283023720928,14
+"Ischaemic Stroke","Cardiovascular","Combined 30/50: complete shift","60-65",20.6734507525391,6.97520449204999,41.1041976472092,14
+"Road Injuries","Injuries","Combined 30/50: complete shift","15-29",549.081360241117,299.385848252406,794.423679683312,14
+"Road Injuries","Injuries","Combined 30/50: complete shift","30-44",586.548686294731,325.788907440904,831.410810021238,14
+"Road Injuries","Injuries","Combined 30/50: complete shift","45-59",466.807277622453,250.447931151453,686.620764858459,14
+"Road Injuries","Injuries","Combined 30/50: complete shift","60-65",118.615186610547,59.5107359028847,186.778941431661,14
+"Unintentional Injuries","Injuries","Combined 30/50: complete shift","15-29",307.513219980389,140.719344551683,482.063455283637,14
+"Unintentional Injuries","Injuries","Combined 30/50: complete shift","30-44",458.486665842904,215.462538482561,699.408176845804,14
+"Unintentional Injuries","Injuries","Combined 30/50: complete shift","45-59",445.45689412378,203.105738262163,704.423464269444,14
+"Unintentional Injuries","Injuries","Combined 30/50: complete shift","60-65",125.998015789205,54.2065222092943,211.653710195924,14
