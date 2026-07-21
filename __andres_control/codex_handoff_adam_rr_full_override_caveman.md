@@ -7446,3 +7446,122 @@ CREADOS:
 NO se editaron `expand_pif.ipynb` ni `expand_pif2.ipynb` durante esta creacion.
 
 Esto valida el notebook contra los RDS reales guardados, pero NO equivale a revalidar el pipeline completo desde microdatos crudos.
+
+# 2026-07-20 17:17 -04: PIF Table 5 PUC vs WHO/Adam en expand_pif3 (IHD/IS) + causa raiz de la dispersion femenina
+
+Fecha/hora: 2026-07-20 17:17:32 -04 (America/Santiago)
+
+## CAVEMAN
+
+Usuario pidio: comparar IHD e IS con Table 5 PUC vs PIF principal, en expand_pif3.
+
+Objetos ya estaban guardados por expand_pif2. Se cargaron con las MISMAS funciones del notebook
+(`pif3_latest_dated_file`, patron fechado). Mas nuevos por fecha:
+
+- Table 5 PUC: `pif2_pif_results_table5_full_20260715.rds` (1792 filas).
+- Main:        `pif2_pif_results_full_20260715.rds` (20160 filas; 1792 de ellas IHD/IS).
+
+Contexto: esta nota continua la de Codex "PIF Table 5 PUC: comparacion arreglada" (2026-07-15 11:27),
+que dejo preparado correr el MISMO experimento (16 escenarios, n_sim=10000). Eso se corrio y se comparo.
+
+## Rejillas perfectamente pareadas
+
+1792 vs 1792 filas. Mismas llaves exactas. Mismos 16 escenarios x 7 anios x 4 bandas x 2 sexos.
+n_sim=10000 en ambas. CERO desacuerdos de aplicabilidad. Solo cambia la funcion RR de IHD/IS.
+=> las diferencias son atribuibles SOLO a la funcion de riesgo.
+
+## Hallazgo 1: la divergencia la manda el lever de VOLUMEN, y el mecanismo es la forma RR a ALTA exposicion
+
+- Escenarios HED puro "no shift" coinciden casi exacto (IHD hombre: 0.0022/0.0056/0.0111 en ambos).
+- TODOS los `volume_reduction_*` divergen fuerte (IHD hombre WHO 0.0002/0.0000/-0.0007 vs Table5 0.0094/0.0132/0.0145).
+
+Causa raiz VERIFICADA contra los registries reales (rr_registry_adam.R, load_adam_rr_registry scope ihd/is):
+
+- La curva WHO/Adam IHD HOMBRE (GENERAL_ihd_RR_2018) tiene una MESETA PLANA HARDCODEADA RR=1 de 60 a 100 g/dia
+  (artefacto del parcheo piecewise "reasonable-ization" de ese archivo). Pendiente local = 0 ahi.
+  Las 3 bandas etarias masculinas comparten la meseta.
+  => bajar volumen NO cambia el RR en ese tramo => PIF de volumen ~ 0 o levemente negativo (empuja de vuelta al pozo protector J).
+- La forma Table 5 hombre `exp(b1*sqrt(x) + b2*x^3)` sube monotona (RR 0.87->1.10->1.71 de 60 a 100 g/d; 16.6 a 150).
+  => bajar volumen si reduce el RR => PIF de volumen grande y positivo.
+- Bajo ~40 g/d AMBAS curvas son J protectoras y casi coinciden (min RR ~0.78-0.79 a 30-36 g/d). Por eso HED-no-shift coincide.
+- IHD mujer: Table 5 sube mucho mas empinada que WHO (RR 4 vs 2 a 100 g/d).
+- IS hombre y mujer: las dos curvas casi COINCIDEN => IS valida (razon Table5/WHO 1.02-1.04). IHD no (1.27 mujer / 1.59 hombre).
+- 73 celdas discrepan en signo, 59 de ellas IHD hombre.
+- Figura definitiva = fig8 (RR vs g/dia, facetas enfermedad x sexo).
+
+Numeros que cito para no confundir unidades: lo que el usuario vio como "529.13 vs 10.85" es
+`avoidable_burden` = HMD-YLL PONDERADO, NO muertes. Analogo en MUERTES evitables (IHD hombre 2024, todas las edades):
+volume-10 WHO 0.42 vs Table5 20.1; volume-30 WHO -1.4 vs Table5 31.1; combined_v20_h50 WHO 22.6 vs Table5 50.5 (de 2144 muertes IHD hombre).
+
+## Hallazgo 2 (CORRECCION del usuario): la columna `Fact` NO es un reescalado de x
+
+Fuente original (Roerecke & Rehm 2012; InterMAHP): x = consumo promedio en g/dia. InterMAHP evalua x y x*ln(x) DIRECTO.
+No existe variable estandar llamada Fact. Por tanto Fact = 1/20 NO significa usar x/20.
+
+Verificado numericamente (curva IHD mujer `exp(-0.052526*x + 0.014704*x*ln(x))`, x en g/dia):
+- minimo RR 0.825 a x = 13.1 g/dia; vuelve a RR=1 a x = 35.6 g/dia. Consistente con Rehm.
+- Si se aplicara x/20, esos puntos se moverian a 260 y 720 g/dia: absurdo, NO es la curva publicada.
+
+El informe PUC muestra Fact pero NO lo define (remite al Anexo 2, ausente del PDF publico).
+Tratar Fact como campo LEGADO / ajuste PUC no documentado. NO es parte de la ecuacion RR.
+NO usarlo como "solucion" para los PIF femeninos dispersos.
+
+CORRIGE mi nota previa en memoria: yo lo habia descrito como "trampa ~2x si alguien lo aplica";
+lo correcto es que aplicarlo produce landmarks absurdos y NUNCA debe aplicarse; queda como campo sin definir.
+
+## Hallazgo 3: la dispersion (IC degenerado) de IHD MUJER es FALTA DE COVARIANZA, no otra cosa
+
+En `aaf_table5_ihd_is_experiment.R` linea 159 (y su gemelo en expand_pif2):
+
+  covBetaCurrent = diag(c(row$se_b1^2, row$se_b2^2), 2L)
+
+La matriz de covarianza de (b1, b2) es DIAGONAL: cero fuera de la diagonal.
+Pero b1 (sobre x) y b2 (sobre x*ln(x)) son coeficientes de regresores fuertemente colineales:
+su covarianza real es fuertemente NEGATIVA. Al sortear b1 y b2 independientes, se generan combinaciones
+que la distribucion conjunta jamas produciria => ln(RR) a alta x explota => cola superior degenerada.
+
+Verificado por Monte Carlo (IHD mujer, x=40 g/d, n=20000):
+- diagonal (rho=0, como esta): punto RR=1.071 | p97.5=32.3 | max=645 | 19.1% de sorteos con RR>5.
+- correlacionada (rho=-0.9):    punto RR=1.071 | p97.5=3.28 | max=11.1 | 0.4% con RR>5.
+El punto NO cambia; restaurar la covarianza negativa colapsa la cola.
+
+Por que SOLO IHD mujer: SE relativa del coeficiente de curvatura b2:
+IHD mujer 54% ; IS hombre 4.5% ; IS mujer 1.4% ; IHD hombre ~0% (b2 fijo ~0).
+Solo IHD mujer tiene un b2 grande e incierto sorteado independiente.
+
+Cifras crudas del artefacto guardado: 231/420 celdas Table5 IHD-mujer no-baseline con pif_up>0.5; 147 con pif_up>0.9 (max 0.998),
+mientras el punto ~0.005. Solo IHD-mujer; IHD-hombre y ambos IS limpios.
+
+ACCION recomendada (NO ejecutada; requiere permiso y toca expand_pif2/el .R fuente):
+reconstruir covBetaCurrent con la covarianza b1-b2 real (del Anexo 2 PUC / ajuste original InterMAHP-Rehm),
+o al menos una correlacion informada. NO tapar con Fact ni con x-scaling ni truncando.
+
+## Trampas tecnicas encontradas al construir la comparacion en expand_pif3
+
+- `pif3_read_rds()` adjunta atributo "path" que SOBREVIVE a los verbos dplyr. `identical()` sobre dos data.frames de llaves
+  compara la procedencia y da FALSE aunque los datos sean iguales. Comparar vectores de llaves pegadas y ordenadas.
+- El objeto Table 5 ya trae `exit_rule`, `scale`, `rr_source`, `policy_vol_lever_pct`, `implied_vol_change_pct`.
+  Chocan con lo que `pif3_enrich_pif()` une desde `pif3_scenario_metadata` (genera exit_rule.x/.y). Borrarlas ANTES de enriquecer.
+
+## Discrepancia con el handoff de Codex del 2026-07-15 (creacion de expand_pif3)
+
+Codex reporto "11/11 chequeos de artefactos PASARON" y "8400 filas PIF aplicables finitas" y ejecucion limpia con warnings-as-errors.
+HOY el notebook FALLA en `pif3-validate-artifacts` (applicable_values_finite, cell_interval_ordering).
+Causa: el grid main tiene 2 celdas con applicable=TRUE pero pif=NA y n_used=NA:
+  Pancreatic Cancer/male/banda4/2012/baseline  y  Ischaemic Heart Disease/male/banda3/2024/hed_reduction_10_rt.
+`cell_interval_ordering` falla SOLO por arrastre (NA<=NA da NA); entre filas finitas hay CERO violaciones de orden.
+Probable: los artefactos 20260715 se re-corrieron DESPUES de que Codex valido, introduciendo esas 2 NA.
+Arreglo real: aguas arriba en expand_pif2, no un parche en pif3. NO aplicado (solo reportado; el usuario eligio "reportar sin tocar").
+
+## Estado al cerrar
+
+NO se edito ningun notebook (regla AGENTS.md; el usuario pidio los chunks a mano).
+Codigo validado end-to-end contra los RDS reales 20260715 con `pif3_export_figures <- FALSE`
+(el export TIFF 600dpi/PDF hace segfault en Rscript headless — artefacto del entorno, NO del codigo;
+el mismo `pif3_save_plot` exporta bien en Positron interactivo, como las Figuras 1-5 existentes).
+
+Celdas propuestas (staged en scratchpad, no en el repo):
+- 1-4: carga+validacion Table 5, comparacion celda a celda, Figura 6 (PIF ponderado IHD/IS x sexo), Tabla S4.
+- 5-7: muertes evitables por grupo etareo x sexo (Figura 7a IHD / 7b IS con cap por panel y triangulos de recorte), Tabla S5.
+- 8: Figura 8 curvas RR (WHO/Adam vs Table 5, facetas enfermedad x sexo). Esta unica celda hace source(rr_registry_adam.R).
+Ubicacion: bloque contiguo despues de `pif3-table-s3-avoidable-deaths`, antes de `pif3-output-manifest`.
