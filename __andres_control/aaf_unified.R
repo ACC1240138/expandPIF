@@ -1389,6 +1389,84 @@ aaf_error_log <- function() {
   out
 }
 
+# ---- capture one complete, position-preserving AAF simulation vector --------
+# `run_aaf_cells_parallel()` executes the family wrappers twice. During its
+# collection pass, the placeholder result deliberately has no simulated_pafs;
+# that placeholder is ignored here. During the real replay, however, capture is
+# strict: every cell must contain exactly n_sim finite values and report that all
+# simulations were used. This makes draw position auditable across cells and
+# prevents a ragged vector from silently masquerading as synchronized draws.
+.aaf_capture_cell_draws <- function(res, return_sims, n_sim, output_name,
+                                    disease, sex, year, age_group, hed_mode,
+                                    source_object = NA_character_) {
+  if (!base::isTRUE(return_sims)) return(NULL)
+
+  if (base::is.null(res$simulated_pafs)) {
+    collection_placeholder <-
+      base::identical(base::as.integer(res$n_used), 0L) &&
+      base::isTRUE(base::is.na(res$point_estimate))
+    if (collection_placeholder) return(NULL)
+    base::stop(
+      "AAF draw capture was requested but simulated_pafs is missing for ",
+      output_name, ", year ", year, ", age group ", age_group, "."
+    )
+  }
+
+  draws <- base::as.numeric(res$simulated_pafs)
+  n_used <- if (base::is.null(res$n_used)) NA_integer_ else base::as.integer(res$n_used)
+  if (
+    base::length(draws) != base::as.integer(n_sim) ||
+    !base::all(base::is.finite(draws)) ||
+    base::is.na(n_used) ||
+    n_used != base::as.integer(n_sim)
+  ) {
+    base::stop(
+      "AAF synchronization failed for ", output_name,
+      ", year ", year, ", age group ", age_group,
+      ": expected ", n_sim, " finite draws with n_used = ", n_sim,
+      "; received length = ", base::length(draws),
+      " and n_used = ", n_used, "."
+    )
+  }
+
+  cell_key <- base::paste(output_name, sex, year, age_group, sep = "|")
+  list(
+    cell_key = cell_key,
+    draws = draws,
+    metadata = base::data.frame(
+      cell_key = cell_key,
+      output_name = base::as.character(output_name),
+      disease = base::as.character(disease),
+      sex = base::as.character(sex),
+      year = base::as.integer(year),
+      age_group = base::as.integer(age_group),
+      hed_mode = base::as.character(hed_mode),
+      source_object = if (base::is.null(source_object)) NA_character_ else base::as.character(source_object),
+      point_estimate_raw = base::as.numeric(res$point_estimate),
+      lower_ci_raw = base::as.numeric(res$lower_ci),
+      upper_ci_raw = base::as.numeric(res$upper_ci),
+      n_used = n_used,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+.aaf_bind_draw_metadata <- function(rows) {
+  if (!base::length(rows)) {
+    return(base::data.frame(
+      cell_key = character(0), output_name = character(0), disease = character(0),
+      sex = character(0), year = integer(0), age_group = integer(0),
+      hed_mode = character(0), source_object = character(0),
+      point_estimate_raw = numeric(0), lower_ci_raw = numeric(0),
+      upper_ci_raw = numeric(0), n_used = integer(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  out <- base::do.call(base::rbind, base::unname(rows))
+  base::row.names(out) <- NULL
+  out
+}
+
 # ---- pick a prevalence keyed [["<year>"]][["edad_tramo_<group>"]] -------------
 .aaf_pick_prop <- function(prop_list, year, group) {
   year_entry <- prop_list[[as.character(year)]]
@@ -1530,11 +1608,14 @@ compute_aaf_from_rr_record <- function(
     n_cores = NULL,
     use_parallel = TRUE,
     stop_on_error = FALSE,
-    output_name = NA_character_
+    output_name = NA_character_,
+    return_sims = FALSE
 ) {
   prefix <- if (identical(record$sex, "female")) "Fem" else "Male"
   out <- .aaf_make_output_df(years = years, prefix = prefix, age_groups = age_groups)
   errors <- list()
+  draws <- list()
+  draw_metadata <- list()
 
   for (i in seq_along(years)) {
     y <- years[[i]]
@@ -1565,7 +1646,8 @@ compute_aaf_from_rr_record <- function(
           neff_consumption = .aaf_resolve_cell(neff_consumption, y, g, record$sex),
           design_factor_consumption = .aaf_resolve_cell(design_factor_consumption, y, g, record$sex),
           n_sim = n_sim, n_pca = n_pca, seed = seed,
-          n_cores = n_cores, use_parallel = use_parallel
+          n_cores = n_cores, use_parallel = use_parallel,
+          return_sims = return_sims
         ),
         error = function(e) e
       )
@@ -1581,6 +1663,16 @@ compute_aaf_from_rr_record <- function(
       out[i, paste0(prefix, g, "_point")] <- min(res$point_estimate, 1)
       out[i, paste0(prefix, g, "_lower")] <- min(res$lower_ci, res$point_estimate)
       out[i, paste0(prefix, g, "_upper")] <- min(max(res$upper_ci, res$point_estimate), 1)
+      captured <- .aaf_capture_cell_draws(
+        res = res, return_sims = return_sims, n_sim = n_sim,
+        output_name = output_name, disease = record$pipeline_disease,
+        sex = record$sex, year = y, age_group = g, hed_mode = "none",
+        source_object = record$source_object
+      )
+      if (!base::is.null(captured)) {
+        draws[[captured$cell_key]] <- captured$draws
+        draw_metadata[[captured$cell_key]] <- captured$metadata
+      }
       if (!is.null(res$point_estimate) && !is.finite(res$point_estimate)) {
         .aaf_log_add(output_name, record$pipeline_disease, record$sex, y, g, "na_point_estimate",
                      detail = "point estimate not finite", n_sim = n_sim,
@@ -1596,8 +1688,13 @@ compute_aaf_from_rr_record <- function(
   audit <- .aaf_audit_row(output_name, record, prefix, "none", prev_method, neff, design_factor,
                           neff_consumption, design_factor_consumption, fd_uncertainty,
                           n_sim, n_pca, seed, length(errors))
-  list(aaf = out, audit = audit,
-       errors = if (length(errors)) do.call(rbind, errors) else data.frame())
+  list(
+    aaf = out,
+    audit = audit,
+    errors = if (length(errors)) do.call(rbind, errors) else data.frame(),
+    draws = draws,
+    draw_metadata = .aaf_bind_draw_metadata(draw_metadata)
+  )
 }
 
 # ---- shared loop over a `targets` table for the NO-HED cause families ---------
@@ -1613,6 +1710,7 @@ compute_aaf_from_rr_record <- function(
   }
   if (!nrow(targets)) stop("No target outputs selected.")
   tables <- list(); audits <- list(); errors <- list()
+  draws <- list(); draw_metadata <- list()
   for (i in seq_len(nrow(targets))) {
     record <- set_meta(find_record(targets[i, , drop = FALSE]), targets[i, , drop = FALSE])
     g_list <- if (record$sex == "female") g_fem_list else g_male_list
@@ -1623,6 +1721,10 @@ compute_aaf_from_rr_record <- function(
            output_name = targets$output_name[[i]]), dots))
     tables[[targets$output_name[[i]]]] <- computed$aaf
     audits[[length(audits) + 1L]] <- computed$audit
+    if (base::length(computed$draws)) draws <- base::c(draws, computed$draws)
+    if (base::nrow(computed$draw_metadata)) {
+      draw_metadata[[base::length(draw_metadata) + 1L]] <- computed$draw_metadata
+    }
     if (nrow(computed$errors)) {
       computed$errors$output_name <- targets$output_name[[i]]
       errors[[length(errors) + 1L]] <- computed$errors
@@ -1630,7 +1732,9 @@ compute_aaf_from_rr_record <- function(
   }
   list(tables = tables,
        audit = do.call(rbind, audits),
-       errors = if (length(errors)) do.call(rbind, errors) else data.frame())
+       errors = if (length(errors)) do.call(rbind, errors) else data.frame(),
+       draws = draws,
+       draw_metadata = .aaf_bind_draw_metadata(draw_metadata))
 }
 
 # Find the single registry record matching a (field == value) set.
@@ -1750,9 +1854,12 @@ compute_general_aaf_from_registry <- function(
                                p_abs_list, p_form_list, p_hed_list, x_vals, years, age_groups,
                                hed_mode, fd_uncertainty, prev_method, neff, design_factor,
                                neff_consumption, design_factor_consumption,
-                               n_sim, n_pca, seed, n_cores, use_parallel, stop_on_error) {
+                               n_sim, n_pca, seed, n_cores, use_parallel, stop_on_error,
+                               return_sims = FALSE) {
   out <- .aaf_make_output_df(years, prefix, age_groups)
   errors <- list()
+  draws <- list()
+  draw_metadata <- list()
   for (i in seq_along(years)) {
     y <- years[[i]]
     for (g in age_groups) {
@@ -1784,7 +1891,8 @@ compute_general_aaf_from_registry <- function(
         design_factor = .aaf_resolve_cell(design_factor, y, g, record$sex),
         neff_consumption = .aaf_resolve_cell(neff_consumption, y, g, record$sex),
         design_factor_consumption = .aaf_resolve_cell(design_factor_consumption, y, g, record$sex),
-        n_sim = n_sim, n_pca = n_pca, seed = seed, n_cores = n_cores, use_parallel = use_parallel)
+        n_sim = n_sim, n_pca = n_pca, seed = seed, n_cores = n_cores,
+        use_parallel = use_parallel, return_sims = return_sims)
       if (identical(hed_mode, "cap")) {
         args$cov_beta <- record$covBetaCurrent   # J-curve betas drawn jointly
       } else {
@@ -1807,6 +1915,16 @@ compute_general_aaf_from_registry <- function(
       out[i, paste0(prefix, g, "_point")] <- min(res$point_estimate, 1)
       out[i, paste0(prefix, g, "_lower")] <- min(res$lower_ci, res$point_estimate)
       out[i, paste0(prefix, g, "_upper")] <- min(max(res$upper_ci, res$point_estimate), 1)
+      captured <- .aaf_capture_cell_draws(
+        res = res, return_sims = return_sims, n_sim = n_sim,
+        output_name = output_name, disease = record$pipeline_disease,
+        sex = record$sex, year = y, age_group = g, hed_mode = hed_mode,
+        source_object = record$source_object
+      )
+      if (!base::is.null(captured)) {
+        draws[[captured$cell_key]] <- captured$draws
+        draw_metadata[[captured$cell_key]] <- captured$metadata
+      }
       if (!is.null(res$point_estimate) && !is.finite(res$point_estimate)) {
         .aaf_log_add(output_name, if (!is.null(record)) record$pipeline_disease else NA_character_,
                      if (identical(prefix, "Fem")) "female" else "male", y, g, "na_point_estimate",
@@ -1819,7 +1937,12 @@ compute_general_aaf_from_registry <- function(
       }
     }
   }
-  list(out = out, errors = errors)
+  list(
+    out = out,
+    errors = errors,
+    draws = draws,
+    draw_metadata = .aaf_bind_draw_metadata(draw_metadata)
+  )
 }
 
 # ---- IHD / IS J-curve + binge (cap). Replaces ihd_is_binge_aaf.R -------------
@@ -1835,13 +1958,14 @@ compute_cv_aaf_from_registry <- function(
     prev_method = "dirichlet", neff = 1000, design_factor = 1.35,
     neff_consumption = NULL, design_factor_consumption = 1, fd_uncertainty = TRUE,
     n_sim = 10000, n_pca = 1000, seed = 2125, n_cores = NULL, use_parallel = TRUE,
-    target_output_names = NULL, stop_on_error = FALSE) {
+    target_output_names = NULL, stop_on_error = FALSE, return_sims = FALSE) {
   disease <- registry[[1L]]$pipeline_disease
   key <- if (grepl("Heart", disease)) "ihd" else "is"
   age_map <- aaf_age_band_mapping(age_scope)
   age_map <- age_map[age_map$group %in% age_groups, , drop = FALSE]
 
   tables <- list(); audits <- list(); errors <- list()
+  draws <- list(); draw_metadata <- list()
   for (sex in c("female", "male")) {
     output_name <- paste0(key, "_", sex)
     if (!is.null(target_output_names) && !(output_name %in% target_output_names)) next
@@ -1860,9 +1984,14 @@ compute_cv_aaf_from_registry <- function(
       neff = neff, design_factor = design_factor, neff_consumption = neff_consumption,
       design_factor_consumption = design_factor_consumption,
       n_sim = n_sim, n_pca = n_pca, seed = seed, n_cores = n_cores,
-      use_parallel = use_parallel, stop_on_error = stop_on_error)
+      use_parallel = use_parallel, stop_on_error = stop_on_error,
+      return_sims = return_sims)
     run$out$disease <- disease
     tables[[output_name]] <- run$out
+    if (base::length(run$draws)) draws <- base::c(draws, run$draws)
+    if (base::nrow(run$draw_metadata)) {
+      draw_metadata[[base::length(draw_metadata) + 1L]] <- run$draw_metadata
+    }
     audits[[length(audits) + 1L]] <- .aaf_audit_row(output_name, get_record(age_groups[[1L]]), prefix,
       "cap", prev_method, neff, design_factor, neff_consumption, design_factor_consumption,
       fd_uncertainty, n_sim, n_pca, seed, length(run$errors))
@@ -1872,7 +2001,8 @@ compute_cv_aaf_from_registry <- function(
     }
   }
   list(tables = tables, audit = do.call(rbind, audits),
-       errors = if (length(errors)) do.call(rbind, errors) else data.frame())
+       errors = if (length(errors)) do.call(rbind, errors) else data.frame(),
+       draws = draws, draw_metadata = .aaf_bind_draw_metadata(draw_metadata))
 }
 
 # ---- injuries (explicit two-component HED, beta1 shared, no former excess) ----
@@ -1885,7 +2015,7 @@ compute_injury_aaf_from_registry <- function(
     prev_method = "dirichlet", neff = 1000, design_factor = 1.35,
     neff_consumption = NULL, design_factor_consumption = 1, fd_uncertainty = FALSE,
     n_sim = 10000, n_pca = 1000, seed = 2125, n_cores = NULL, use_parallel = TRUE,
-    target_output_names = NULL, stop_on_error = FALSE) {
+    target_output_names = NULL, stop_on_error = FALSE, return_sims = FALSE) {
   targets <- data.frame(
     output_name = c("ri_fem", "ri_male", "injuries_fem", "injuries_male", "violence_fem", "violence_male"),
     source_object = c("injuries_MVA", "injuries_MVA", "injuries_other_unit", "injuries_other_unit",
@@ -1898,6 +2028,7 @@ compute_injury_aaf_from_registry <- function(
   if (!nrow(targets)) stop("No injury outputs selected.")
 
   tables <- list(); audits <- list(); errors <- list()
+  draws <- list(); draw_metadata <- list()
   for (i in seq_len(nrow(targets))) {
     sex <- targets$sex[[i]]; output_name <- targets$output_name[[i]]
     prefix <- if (sex == "female") "Fem" else "Male"
@@ -1913,9 +2044,14 @@ compute_injury_aaf_from_registry <- function(
       neff = neff, design_factor = design_factor, neff_consumption = neff_consumption,
       design_factor_consumption = design_factor_consumption,
       n_sim = n_sim, n_pca = n_pca, seed = seed, n_cores = n_cores,
-      use_parallel = use_parallel, stop_on_error = stop_on_error)
+      use_parallel = use_parallel, stop_on_error = stop_on_error,
+      return_sims = return_sims)
     run$out$disease <- record$pipeline_disease
     tables[[output_name]] <- run$out
+    if (base::length(run$draws)) draws <- base::c(draws, run$draws)
+    if (base::nrow(run$draw_metadata)) {
+      draw_metadata[[base::length(draw_metadata) + 1L]] <- run$draw_metadata
+    }
     audits[[length(audits) + 1L]] <- .aaf_audit_row(output_name, record, prefix, "explicit",
       prev_method, neff, design_factor, neff_consumption, design_factor_consumption,
       fd_uncertainty, n_sim, n_pca, seed, length(run$errors))
@@ -1925,7 +2061,8 @@ compute_injury_aaf_from_registry <- function(
     }
   }
   list(tables = tables, audit = do.call(rbind, audits),
-       errors = if (length(errors)) do.call(rbind, errors) else data.frame())
+       errors = if (length(errors)) do.call(rbind, errors) else data.frame(),
+       draws = draws, draw_metadata = .aaf_bind_draw_metadata(draw_metadata))
 }
 
 # =============================================================================

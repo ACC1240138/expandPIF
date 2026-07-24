@@ -85,6 +85,7 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !__andres_control/aaf_engine_inputs_bundle_*.rds
 !__andres_control/aaf_nested_by_disease_*.rds
 !__andres_control/aaf_nested_by_disease_*.rdsv
+!__andres_control/aaf_synchronised_draws_*.rds
 !__andres_control/ine_basedatos.xlsx
 !__andres_control/ine_proyecciones_2012_2024.xlsx
 # [2026-07-15] glob covers the DATED export "Mortality Estimates WHO 2024_YYYYMMDD.xlsx"
@@ -126,9 +127,21 @@ ACC1240138-Potentially-Avoidable-Injury-Mortality-in-Chile--bc6359e/udpate jun 2
 !__andres_control/pif2_pif_results_*.rds
 !__andres_control/pif2_pif_audit_*.rds
 !__andres_control/pif2_pif_results_table5_*.rds
+!__andres_control/pif2_pif_synchronised_draws_table5_full_*.rds
 !__andres_control/pif2_injuries_fulltest_results_*.rds
 !__andres_control/pif2_injuries_fulltest_checks_*.rds
 !__andres_control/run_expand_pif2_full.R
+!__andres_control/run_notebook_logged.py
+!__andres_control/run_paf_draw_regeneration.ps1
+!__andres_control/monitor_expand_pif2_finish_*.ps1
+!__andres_control/validate_paf_draw_regeneration.R
+!__andres_control/paf_draw_regeneration_*_worklog.log
+!__andres_control/paf_draw_regeneration_*_monitor.log
+!__andres_control/paf_draw_regeneration_*_chunk_timings.jsonl
+!__andres_control/paf_draw_regeneration_*_expand_pif_chunk_timings.jsonl
+!__andres_control/paf_draw_regeneration_*_expand_pif2_chunk_timings.jsonl
+!__andres_control/paf_draw_regeneration_*_validate_*.stdout.log
+!__andres_control/paf_draw_regeneration_*_validate_*.stderr.log
 !__andres_control/expand_pif2.qmd
 !__andres_control/expand_pif2_files/
 !__andres_control/expand_pif2_files/**

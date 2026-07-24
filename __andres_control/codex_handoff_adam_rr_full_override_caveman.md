@@ -7565,3 +7565,84 @@ Celdas propuestas (staged en scratchpad, no en el repo):
 - 5-7: muertes evitables por grupo etareo x sexo (Figura 7a IHD / 7b IS con cap por panel y triangulos de recorte), Tabla S5.
 - 8: Figura 8 curvas RR (WHO/Adam vs Table 5, facetas enfermedad x sexo). Esta unica celda hace source(rr_registry_adam.R).
 Ubicacion: bloque contiguo despues de `pif3-table-s3-avoidable-deaths`, antes de `pif3-output-manifest`.
+
+## 2026-07-22 18:43 -04: PIF NO depende de AAF colapsada (Table S2 sin intervalo es un problema aislado, no contamina PIF)
+
+Fecha/hora: 2026-07-22 18:43 (America/Santiago)
+
+Pregunta del user: guardar AAF solo como point/lower/upper (sin draws) puede haber afectado las estimaciones de PIF?
+Verificado leyendo `aaf_unified.R` (2120 lineas), NO el notebook:
+
+- `aaf_confint()` (L954-1084) y `pif_confint()` (L1105-1307) son DOS funciones Monte Carlo separadas y autocontenidas.
+  `pif_confint()` NO tiene parametro AAF en su firma. Cada una tiene su propio `one_sim(i)` (AAF: L1048-1070; PIF: L1254-1287)
+  que en CADA replica re-sortea desde cero los mismos insumos primitivos: betas RR via mvrnorm (`.aaf_draw_rr` L334),
+  prevalencias via Dirichlet/binomial (`.aaf_draw_prev` L303), consumo via gamma resample, RR_FD via rlnorm.
+  Ninguna lee la salida de la otra. Grep confirma CERO cross-calls entre `aaf_confint(` y `pif_confint(` en el archivo.
+- Difieren solo en el nucleo determinista: AAF usa `.aaf_core()` (L522-546, implicito R_cf=1, "cero alcohol");
+  PIF usa `.pif_core()` (L712-792, R_cf especifico del escenario hed/volume/both, PIF = 1 - R_cf/R_obs).
+  El header (L28-35) dice "AAF = PIF en eliminacion total" como equivalencia MATEMATICA documentada, no como pipeline real de codigo.
+- Comparten SOLO los objetos de config (`pif2_aaf_mc`, `pif2_aaf_uncertainty`: n_sim, seed, diseno) via `pif2_nested_bundle$inputs`;
+  son ajustes de la simulacion, NO la salida ajustada de AAF. Esto probablemente hace que draw-i de AAF y draw-i de PIF
+  caigan en la misma posicion del RNG (comonotonicos por diseño), pero eso no crea dependencia de datos.
+
+CONCLUSION: colapsar el Monte Carlo de AAF a point/lower/upper en `aaf_nested_by_disease_<date>.rds` SOLO limita lo que
+Tabla S2 (muertes atribuibles) puede reportar (sin intervalo conjunto). NO afecta la correccion de `pif3_draw_bundle`
+ni de ninguna figura/tabla basada en PIF (Fig1/2/5, Tabla S1, S3): esas nunca pasaron por el artefacto AAF colapsado.
+
+Sin verificar 100% (fuera de alcance de este archivo): que el sitio de llamada real en expand_pif2.ipynb pase SIEMPRE
+config fresca a `pif_confint()` y no algo derivado post-hoc de un numero de AAF ya colapsado. Los call sites vistos
+(L2687-2688, 24634, 24769, 25213, 25804) solo pasan `unc`/`mc`/`exposure`, consistente con "fresco", pero no es lectura
+linea por linea de las 26k lineas del notebook.
+
+Si algun dia se quiere intervalo conjunto para Tabla S2: `aaf_confint()` ya tiene flag `return_sims` (igual que PIF).
+Nadie lo llama con `return_sims=TRUE` hoy; los 3 call sites de aaf_confint() en expand_pif2 tiran los draws
+y solo guardan `$point_estimate`. Haria falta orquestacion nueva tipo `pif2_collect_synchronised_draws()` pero para AAF.
+NO se toco aaf_unified.R ni ningun notebook: solo se reporta.
+
+## 2026-07-24 13:02 -04: actualizacion PAF/PIF draws main + PUC tras rerun expand_pif / expand_pif2
+
+Fecha/hora: 2026-07-24 13:02 (America/Santiago)
+
+Contexto del user: actualizar PAF con recogida de draws y no dejar fuera los draws PUC:
+AAF main + AAF Table 5/PUC en `expand_pif`, y PIF main + PIF Table 5/PUC en `expand_pif2`.
+Tambien se pidio conservar version avanzada del notebook, matar sesiones R viejas, correr de nuevo,
+validar AAF y PIF por separado, registrar tiempos por chunk, y hacer commit de los outputs nuevos
+sin `git add -f` ni reescritura masiva/irreflexiva de `.gitignore`.
+
+Hecho/verificado en la corrida 20260723:
+
+- Se uso `__andres_control/expand_pif.ipynb` como version mas avanzada recuperada; no se encontro autosave auxiliar
+  mas reciente que superara ese notebook. El notebook quedo ejecutado hasta `session-info`.
+- `expand_pif` corrio completo con 65/65 celdas y final `table5-ihd-is-aaf-step4-dgs-formatting`
+  (`2026-07-23T00:15:56-04:00` a `2026-07-23T00:58:29-04:00`).
+- Validacion AAF: `EXPAND_PIF_ARTIFACT_VALIDATION=PASS`.
+- Artefactos AAF frescos 20260723: `aaf_engine_inputs_bundle_20260723.rds`,
+  `aaf_nested_by_disease_20260723.rds`, `Mortality Estimates WHO 2024_20260723.xlsx`,
+  `aaf_table5_result_20260723.rds`.
+- Draws AAF frescos 20260723: `aaf_synchronised_draws_who_adam_full_20260723.rds`
+  y `aaf_synchronised_draws_table5_puc_full_20260723.rds`, ambos con manifiesto SHA-256.
+- `expand_pif2` corrio completo con 29/29 celdas y final `pif2-session-info`
+  (`2026-07-23T00:59:35-04:00` a `2026-07-23T14:08:36-04:00`).
+- Artefactos PIF main frescos 20260723: `pif2_pif_results_full_20260723.rds`,
+  `pif2_pif_audit_full_20260723.rds`, `pif2_pif_synchronised_draws_full_20260723.rds`
+  y manifiesto.
+- Artefactos PIF Table 5/PUC frescos 20260723: `pif2_pif_results_table5_full_20260723.rds`,
+  `pif2_pif_audit_table5_full_20260723.rds`, `pif2_pif_synchronised_draws_table5_full_20260723.rds`
+  y manifiesto.
+- Timings por chunk quedaron en `manual_paf_pif_draws_20260723_001555/expand_pif_chunk_timings.jsonl`
+  y `manual_paf_pif_draws_20260723_001555/expand_pif2_chunk_timings.jsonl`.
+
+Estado tecnico antes del commit:
+
+- El monitor detecto `expand_pif2` terminado a las 14:19, pero fallo antes de commitear por un falso negativo:
+  el validador de `expand_pif` imprimio PASS, pero `Start-Process` dejo `ExitCode` vacio y el monitor lo trato como fallo.
+- Se corrigio `monitor_expand_pif2_finish_20260723.ps1` para correr el validador directamente con `Rscript`
+  y leer `$LASTEXITCODE`, evitando el `ExitCode` vacio de `Start-Process`.
+- El mensaje de commit preparado queda:
+  `actualización PAF (recogida draws) (tambien PUC AAFs y PIFs)`
+- El cuerpo del commit documenta regeneracion de `expand_pif`, regeneracion de `expand_pif2`, rescate de draws
+  AAF/PIF main+PUC, timings por chunk, logs de validacion, whitelist puntual de `.gitignore`, y que PIF se recalcula
+  desde insumos primitivos y no desde AAF colapsada.
+
+Nota metodologica mantenida: guardar AAF colapsada como point/lower/upper limita la Tabla S2 si se quiere intervalo
+conjunto de AAF, pero NO contamina los PIF; los PIF salen de `pif_confint()` y sus propios draws sincronizados.

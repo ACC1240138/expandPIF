@@ -1,5 +1,5 @@
 # =============================================================================
-# build_ypll.R   [2026-07-14]
+# build_ypll.R   [updated 2026-07-22]
 # -----------------------------------------------------------------------------
 # Rebuilds the YPLL/YLL cache for the 23 modelled causes, 2012-2024, ages 15-65,
 # from the DEIS death microdata -- with THREE metrics side by side, because they are
@@ -72,7 +72,7 @@ pipe <- ypll_pipeline_deaths()
 pipe$n <- round(pipe$n)
 chk <- merge(long, pipe[, c("year", "gender", "age_group", "disease", "n")],
              by = c("year", "gender", "age_group", "disease"))
-if (nrow(chk) != 1188L || any(chk$deaths != chk$n) || sum(chk$deaths) != 117949L) {
+if (nrow(chk) != 1188L || any(chk$deaths != chk$n) || sum(chk$deaths) != 117944L) {
   stop("GATE FAILED inside build_ypll.R: the rebuilt death base does not reproduce the ",
        "PIF pipeline's counts (", nrow(chk), " joined cells, ",
        sum(chk$deaths != chk$n), " mismatches, ", sum(chk$deaths), " deaths). ",
@@ -152,7 +152,7 @@ cat(sprintf("[out   ] TOTAL years lost:  yll_hmd = %.0f | yll_gbd = %.0f | ypll_
 cat(sprintf("[out   ] the legacy convention understates the national YLL by %.1f%% overall\n",
             100 * (1 - sum(ypll$ypll_ref) / sum(ypll$yll_hmd))))
 
-attr(ypll, "built")    <- "2026-07-14"
+attr(ypll, "built")    <- format(Sys.Date(), "%Y-%m-%d")
 attr(ypll, "metrics")  <- "ypll = yll_hmd (national). yll_gbd = GBD 2019 TMRLT. ypll_ref = legacy e0-age (BIASED for chronic causes; injuries only)."
 attr(ypll, "deaths")   <- "DEIS microdata, 15-65, 2012-2024; ICD map = Shield 2025 Table S6 (ypll_icd_defs.R). Reconciles 1188/1188 with the PIF pipeline's own counts."
 attr(ypll, "lifetabs") <- "HMD Chile 1x1 (mortality.org, v6, 2026-01-12); INE base-2024 e0; IHME GBD 2019 TMRLT (DOI 10.6069/1D4Y-YQ37)."

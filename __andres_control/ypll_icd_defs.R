@@ -195,14 +195,12 @@ YPLL_AAF_BUNDLE <- .ypll_latest_by_date(
 # The three injury causes match on DIAG1 *or* DIAG2, because external causes are coded
 # in the secondary field. Getting this backwards silently changes the injury counts.
 #
-# PRE-EXISTING DEFECT, KNOWINGLY NOT FIXED HERE (edad_tipo). In the 2024 file,
-# `edad_cant` is only in YEARS when `edad_tipo == 1`; the pipeline never guards this, so
-# 109 infant deaths (88 recorded in days, 21 in hours) pass the 15-65 filter as adults.
-# Only 4 of them land in a modelled cause (all Lower Respiratory Infection, because P23
-# is inside lri_codes) = 0.0034% of the 117,949-death base. Those deaths are ALREADY IN
-# the pipeline's counts, which is precisely why the reconciliation comes out exact.
-# "Fixing" it here alone would BREAK the 1188/1188 match and the integrality assert.
-# Fix it upstream in expand_pif.ipynb for both modules, or not at all.
+# RESOLVED 2026-07-15 (edad_tipo). In the 2024 file, `edad_cant` is measured in
+# years only when `edad_tipo == 1`. Both expand_pif.ipynb and this independent
+# rebuild now apply that guard before the 15-65 filter. The resulting wave-year
+# base contains 117,944 deaths and reconciles exactly in all 1,188 cells. Keeping
+# the same guard on both sides prevents infants recorded in days or hours from
+# being misclassified as adults.
 ypll_build_deaths <- function(death_dir = YPLL_DEATH_DIR) {
   m21 <- rio::import(file.path(death_dir, "DEFUNCIONES_DEIS_12_23_15plus.parquet")) |>
     janitor::clean_names() |>

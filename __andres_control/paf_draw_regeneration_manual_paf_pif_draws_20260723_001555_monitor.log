@@ -1,0 +1,90 @@
+﻿[2026-07-23T01:07:08.4713483-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-23T01:07:08.5201322-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T01:22:08.5479118-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T01:37:08.5686883-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T01:46:19.6291654-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-23T01:46:19.6765411-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T01:49:38.9297850-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-23T01:49:38.9773772-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T02:04:39.0175256-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T02:19:39.0293008-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T02:34:39.0538608-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T02:49:39.0630020-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T03:04:39.0897843-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T03:19:39.1135852-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T03:34:39.1228910-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T03:49:39.1475924-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T04:04:39.1638532-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T04:19:39.1814357-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T04:34:39.2056574-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T04:49:39.2197618-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T05:04:39.2342023-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T05:19:39.2523645-04:00] RUNNING completed=12/29; active=pif2-run-grid; updated=2026-07-23T00:59:49-04:00
+[2026-07-23T05:34:39.2703934-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T05:49:39.3043454-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T06:04:39.3247530-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T06:19:39.3364277-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T06:34:39.3607750-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T06:49:39.3763774-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T07:04:39.3954117-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T07:19:39.4021930-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T07:34:39.4224921-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T07:49:39.4348745-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T08:04:39.4525216-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T08:19:39.4606077-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T08:34:39.4814411-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T08:49:39.4988012-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T09:04:39.5208729-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T09:19:39.5482667-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T09:34:39.5715064-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T09:49:39.5910599-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T10:04:39.6047137-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T10:19:39.6206609-04:00] RUNNING completed=13/29; active=pif2-save-synchronised-monte-carlo-draws; updated=2026-07-23T05:34:09-04:00
+[2026-07-23T10:34:39.6528898-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T10:49:39.6778440-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T11:04:39.6961831-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T11:19:39.7133021-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T11:34:39.7414396-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T11:49:39.7717089-04:00] RUNNING completed=20/29; active=pif2-injuries-full-test; updated=2026-07-23T10:23:54-04:00
+[2026-07-23T12:04:39.8001244-04:00] RUNNING completed=25/29; active=pif2-table5-run; updated=2026-07-23T12:01:51-04:00
+[2026-07-23T12:19:39.8241555-04:00] RUNNING completed=25/29; active=pif2-table5-run; updated=2026-07-23T12:01:51-04:00
+[2026-07-23T12:34:39.8347932-04:00] RUNNING completed=25/29; active=pif2-table5-run; updated=2026-07-23T12:01:51-04:00
+[2026-07-23T12:49:39.8450372-04:00] RUNNING completed=25/29; active=pif2-table5-run; updated=2026-07-23T12:01:51-04:00
+[2026-07-23T13:04:39.8658443-04:00] RUNNING completed=26/29; active=pif2-save-table5-synchronised-monte-carlo-draws; updated=2026-07-23T13:03:45-04:00
+[2026-07-23T13:19:39.8843982-04:00] RUNNING completed=26/29; active=pif2-save-table5-synchronised-monte-carlo-draws; updated=2026-07-23T13:03:45-04:00
+[2026-07-23T13:34:39.9005022-04:00] RUNNING completed=26/29; active=pif2-save-table5-synchronised-monte-carlo-draws; updated=2026-07-23T13:03:45-04:00
+[2026-07-23T13:49:39.9184445-04:00] RUNNING completed=26/29; active=pif2-save-table5-synchronised-monte-carlo-draws; updated=2026-07-23T13:03:45-04:00
+[2026-07-23T14:04:39.9298292-04:00] RUNNING completed=26/29; active=pif2-save-table5-synchronised-monte-carlo-draws; updated=2026-07-23T13:03:45-04:00
+[2026-07-23T14:19:39.9459819-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-23T14:19:39.9760355-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156
+[2026-07-23T14:19:42.4515306-04:00] FAILED Validation failed for expand_pif with exit code . See C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555\expand_pif_validate.stderr.log
+[2026-07-24T13:03:30.0968595-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-24T13:03:30.1389483-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-24T13:03:30.1597254-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156
+[2026-07-24T13:03:30.3149327-04:00] FAILED Error: Missing artifact: C:/Users/nDP/Desktop/ACC1240138_private/__andres_control/aaf_nested_by_disease_20260724.rds
+[2026-07-24T13:04:21.1053071-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-24T13:04:21.1400674-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-24T13:04:21.1597088-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:04:22.2932634-04:00] FAILED EXPAND_PIF_ARTIFACT_VALIDATION=PASS
+[2026-07-24T13:04:48.5052381-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-24T13:04:48.5420029-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-24T13:04:48.5577735-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:04:49.8722392-04:00] PASS validation expand_pif
+[2026-07-24T13:04:49.8732372-04:00] START validation expand_pif2 with PIF_RUN_STARTED_EPOCH=1784782775 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:04:55.1694691-04:00] FAILED Validation failed for expand_pif2 with exit code 1. See C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555\expand_pif2_validate.stderr.log
+[2026-07-24T13:05:49.3374315-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-24T13:05:49.3716697-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-24T13:05:49.3891916-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:05:50.5451388-04:00] PASS validation expand_pif
+[2026-07-24T13:05:50.5451388-04:00] START validation expand_pif2 with PIF_RUN_STARTED_EPOCH=1784782775 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:05:56.0423656-04:00] PASS validation expand_pif2
+[2026-07-24T13:05:58.6668442-04:00] Staged all worktree changes: 135 files.
+[2026-07-24T13:05:58.9710875-04:00] FAILED git diff --cached --check failed.
+[2026-07-24T13:06:35.9455223-04:00] Monitor started. IntervalSeconds=900 RunDir=C:\Users\nDP\Desktop\ACC1240138_private\__andres_control\manual_paf_pif_draws_20260723_001555
+[2026-07-24T13:06:35.9850839-04:00] Runner result detected: status=completed; completed=29/29; final_label=pif2-session-info
+[2026-07-24T13:06:36.0056361-04:00] START validation expand_pif with PIF_RUN_STARTED_EPOCH=1784780156 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:06:37.1220428-04:00] PASS validation expand_pif
+[2026-07-24T13:06:37.1230428-04:00] START validation expand_pif2 with PIF_RUN_STARTED_EPOCH=1784782775 PIF_ARTIFACT_STAMP=20260723
+[2026-07-24T13:06:42.2370708-04:00] PASS validation expand_pif2
+[2026-07-24T13:06:42.3469537-04:00] Staged all worktree changes: 135 files.
+[2026-07-24T13:06:43.0701157-04:00] DONE commit created by monitor; later amended only to fix UTF-8 encoding of the commit subject and to include this audit note.

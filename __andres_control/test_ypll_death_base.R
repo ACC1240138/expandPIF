@@ -1,5 +1,5 @@
 # =============================================================================
-# test_ypll_death_base.R   [2026-07-14]
+# test_ypll_death_base.R   [updated 2026-07-22]
 # -----------------------------------------------------------------------------
 # THE GATE. Nothing about the YPLL/YLL rebuild is valid unless this passes.
 #
@@ -20,7 +20,7 @@
 #     mismatched cells              == 0
 #     orphan cells, either side     == 0
 #     max |n_rebuilt - n_pipeline|  == 0        (exactly zero, not "small")
-#     total deaths                  == 117,949
+#     total deaths                  == 117,944
 #     n_pipeline is integral to     <  1e-9     (proves the xlsx and the bundle are
 #                                                from the SAME engine run)
 #
@@ -139,7 +139,7 @@ if (nrow(on_wave))                 fail <- c(fail, sprintf("%d rebuild-only cell
 if (nrow(only_pip))                fail <- c(fail, sprintf("%d cells only in the pipeline (our death set is MISSING deaths the PIF uses)", nrow(only_pip)))
 if (!identical(nrow(both), 1188L)) fail <- c(fail, sprintf("joined %d cells, expected 1188", nrow(both)))
 if (!isTRUE(maxdiff == 0))         fail <- c(fail, sprintf("max |diff| = %s, expected exactly 0", format(maxdiff)))
-if (sum(both$deaths) != 117949L)   fail <- c(fail, sprintf("total deaths %d, expected 117949", sum(both$deaths)))
+if (sum(both$deaths) != 117944L)   fail <- c(fail, sprintf("total deaths %d, expected 117944", sum(both$deaths)))
 
 if (length(fail)) {
   stop("\n*** GATE FAILED ***\n  ", paste(fail, collapse = "\n  "),
